@@ -1,6 +1,6 @@
 name: Build research-capable unsigned IPA
 # Local research weights are added only after this source-only build is tested.
-# Expected installed version: 3.31.0, build 44. Includes bounded root composition, validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
+# Expected installed version: 3.31.0, build 44. Includes build-44 version assertions, bounded root composition, validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
 on:
   workflow_dispatch:
   push:
@@ -31,6 +31,8 @@ jobs:
       - name: Compile iPhone application
         run: |
           set -o pipefail
+          SIM_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for k in sorted(d,reverse=True) if "iOS" in k for v in d[k] if "iPhone" in v["name"]))')
+          xcrun simctl boot "$SIM_ID" || true
           xcodebuild -project OnCare.xcodeproj -scheme OnCare -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tee ios-research-build.log
       - name: Verify application and native analysis unit tests
         run: |
