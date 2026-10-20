@@ -12,9 +12,12 @@ struct SyncPair: Codable, Equatable {
     func validate() throws {
         let pieces = host.split(separator: ".", omittingEmptySubsequences: false)
         let octets = pieces.compactMap { Int($0) }
-        guard (version == 1 || version == 2), ((version == 2 && host.isEmpty) || (pieces.count == 4 && octets.count == 4 &&
-              zip(pieces, octets).allSatisfy({ pair in String(pair.1) == pair.0 && (0...255).contains(pair.1) }) &&
-              (octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1])))),
+        let localHost: Bool
+        if pieces.count == 4, octets.count == 4,
+           zip(pieces, octets).allSatisfy({ String($0.1) == $0.0 && (0...255).contains($0.1) }) {
+            localHost = octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1]))
+        } else { localHost = false }
+        guard (version == 1 || version == 2), localHost || (version == 2 && host.isEmpty),
               port == 8766, UUID(uuidString: peer) != nil,
               token.range(of: #"^[A-Za-z0-9_-]{43}$"#, options: .regularExpression) != nil,
               fingerprint.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { throw CareError.invalid }
