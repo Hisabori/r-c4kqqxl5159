@@ -25,7 +25,7 @@ struct HealthSurveyView: View {
                 Section("최근 응답 · 이전과 비교") { ForEach(0..<4, id: \.self) { i in VStack(alignment: .leading, spacing: 6) { Text(HealthSurveyResponse.questions[i]).font(.subheadline); Text(HealthSurveyResponse.choices[latest.answers[i]]).font(.headline); if list.count > 1 { Text("이전: " + HealthSurveyResponse.choices[list[1].answers[i]]).font(.caption).foregroundStyle(.secondary) } } } }
                 Section("보관한 설문 · 최근 12회") { ForEach(list) { item in VStack(alignment: .leading, spacing: 6) { Text(item.date, format: .dateTime.year().month().day().hour().minute()).font(.headline); ForEach(0..<4, id: \.self) { i in Text(HealthSurveyResponse.questions[i] + " · " + HealthSurveyResponse.choices[item.answers[i]]).font(.caption).foregroundStyle(.secondary) } } } }
             }
-        }.navigationTitle("건강 생활 설문").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
+        }.navigationTitle("건강 생활 설문").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
         }
     }
     private func save() { let response = HealthSurveyResponse(answers: answers); guard response.valid, var list = responses else { return }; list.insert(response, at: 0); list = Array(list.prefix(12)); guard let data = try? JSONEncoder().encode(list), let text = String(data: data, encoding: .utf8) else { message = "저장하지 못했어요."; return }; history = text; draft = "-1,-1,-1,-1"; message = "응답을 저장했어요. 아래에서 이전 응답과 비교할 수 있어요." }

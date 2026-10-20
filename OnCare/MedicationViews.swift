@@ -35,7 +35,7 @@ struct MedicationView: View {
                     ForEach(registered) { plan in planCard(plan, today: false) }
                     Text("한 일정에 한 복용 시간을 등록해요. 하루 여러 번이면 일정을 각각 추가하세요. 복용 확인은 오늘의 기록이며 알림 시간을 바꾸지 않습니다. 투약 백업에서 일정과 확인 기록을 별도로 저장하고 옮길 수 있어요. 건강 기록 백업·자동 동기화와는 별도입니다.").font(.caption).foregroundStyle(.secondary)
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("투약 알림").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("투약 알림").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .searchable(text: $query, prompt: "약 이름·복용 방법 검색")
                 .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
                 .sheet(item: $editing) { MedicationEditor(plan: $0) }
@@ -113,7 +113,7 @@ struct MedicationEditor: View {
                     Text("약의 용량이나 복용 시간을 온케어가 추천하지 않습니다. 복용 방법은 처방·약사 안내를 따라 입력하세요.").font(.caption).foregroundStyle(.secondary)
                     if let message = store.message { Text(message).font(.caption).foregroundStyle(Palette.coral) }
                 }
-            }.disabled(busy).navigationTitle("복용 일정 등록").navigationBarTitleDisplayMode(.inline)
+            }.disabled(busy).navigationTitle("복용 일정 등록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) { Button("취소") { dismiss() }.disabled(busy) }
                     ToolbarItem(placement: .navigationBarTrailing) { Button(busy ? "저장 중…" : "저장") { savePlan() }.disabled(busy).accessibilityIdentifier("medication-save") }

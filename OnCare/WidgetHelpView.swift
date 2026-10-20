@@ -39,7 +39,7 @@ struct WidgetHelpView: View {
                     CareButton(title: "추가된 위젯 새로고침", id: "widget-reload") { WidgetCenter.shared.reloadAllTimelines(); query() }
                     Text("새로고침은 이미 추가한 위젯의 내용을 갱신합니다. 빠진 확장을 설치하거나 위젯 목록을 강제로 등록하는 기능은 아닙니다.").font(.caption).foregroundStyle(.secondary)
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("위젯 설치 확인").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("위젯 설치 확인").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }.onAppear { query() }
         }
     }

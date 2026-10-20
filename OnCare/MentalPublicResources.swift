@@ -100,7 +100,7 @@ struct MentalPublicResourcesView: View {
                     Button { resource = MentalResource(id: item.id, title: item.title, source: "NIMH · " + String(item.date.prefix(10)) + " · 영어 원문", body: item.summary?.isEmpty == false ? item.summary! : "이 소식은 제공된 본문 요약이 없어요. 공식 원문에서 내용을 확인할 수 있습니다.", url: url, aiAllowed: item.summary?.isEmpty == false) } label: { VStack(alignment: .leading, spacing: 4) { Text(item.title); if !item.date.isEmpty { Text(String(item.date.prefix(10))).font(.caption).foregroundStyle(.secondary) } }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8) }.buttonStyle(.plain)
                 }
             }
-        }.padding(20).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
+        }.padding(20).background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 24))
             .task { await feed.refresh() }
             .sheet(item: $resource) { NativeMentalResourceDetail(resource: $0) }
     }

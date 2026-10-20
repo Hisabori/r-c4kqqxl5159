@@ -62,8 +62,9 @@ struct MedicationState: Codable {
         for plan in plans where plan.enabled {
             for weekday in plan.weekdays.sorted() {
                 let content = UNMutableNotificationContent()
-                content.title = "복용 일정을 확인할 시간"
-                content.body = "온케어에서 등록한 약과 복용 방법을 확인하세요."
+                let mode = UserDefaults.standard.bool(forKey: "app-deep-mind")
+                content.title = DeepMind.notificationTitle(mode: mode, explicit: UserDefaults.standard.bool(forKey: "app-deep-explicit"))
+                content.body = DeepMind.notificationBody(mode: mode)
                 content.sound = .default
                 content.userInfo = ["oncare-route": "medications"]
                 let date = DateComponents(hour: plan.hour, minute: plan.minute, weekday: weekday)

@@ -50,7 +50,7 @@ struct SleepRoutineView: View {
     var body: some View {
         NavigationStack {
             sleepContent
-                .navigationTitle("수면 루틴").navigationBarTitleDisplayMode(.inline)
+                .navigationTitle("수면 루틴").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
                     ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } }
@@ -74,7 +74,7 @@ struct SleepRoutineView: View {
                 if !message.isEmpty { Text(message).font(.subheadline).foregroundStyle(Palette.purple).accessibilityIdentifier("sleep-message") }
                 if mode != 2 { recentCard }
             }.padding(22)
-        }.background(Color(.systemGroupedBackground))
+        }.background(CareAppearance.background)
     }
     @ViewBuilder private var resetActions: some View {
         Button("초기화", role: .destructive) { performTracking { try tracking.reset(); trackingMessage = "취침 기록을 초기화했어요." } }.accessibilityIdentifier("sleep-tracking-reset-confirm")

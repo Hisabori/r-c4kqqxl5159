@@ -28,7 +28,7 @@ struct AppleHealthView: View {
                 Text("권한을 끄거나 원본 기록을 모두 지워 빈 결과가 되어도 기존 보관 자료는 자동 삭제하지 않아요. 아래 버튼으로 Apple 건강에서 받은 자료만 지울 수 있습니다.").font(.caption)
                 Button("Apple 건강 보관 자료 지우기", role: .destructive) { deleting = true }.disabled(health.busy)
             }
-        }.navigationTitle("Apple 건강 연결").navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle("Apple 건강 연결").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
         .onDisappear { health.cancel() }
         .onChange(of: phase) { if $0 == .background { health.cancel() } }
         .confirmationDialog("Apple 건강에서 받은 보관 자료를 지울까요?", isPresented: $deleting) { Button("보관 자료 지우기", role: .destructive) { var next = journal.state; next.healthRecords?.removeAll { $0.source == "apple-health" }; _ = journal.persist(next) } } message: { Text("Apple 건강 원본, Android에서 받은 기록과 직접 입력한 기록은 유지됩니다.") }

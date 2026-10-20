@@ -29,7 +29,7 @@ struct ArticleTile: View {
                 Text(recommendation.reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack { Text("NHS · 한국어 요약"); Spacer(); if library.read.contains(article.id) { Text("읽음") }; Text("1분 읽기") }.font(.caption2).foregroundStyle(.secondary)
             }.padding(18)
-        }.background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 26)).clipShape(RoundedRectangle(cornerRadius: 26))
+        }.background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 26)).clipShape(RoundedRectangle(cornerRadius: 26))
     }
 }
 struct ArticleRecommendationsSection: View {
@@ -99,7 +99,7 @@ struct ArticleLibraryView: View {
                     }
                     Text("공공 의료기관 NHS 자료를 온케어가 한국어로 정리한 \(HealthArticle.catalog.count)편의 큐레이션이에요. 원문은 영어이며, 일반적인 건강 정보입니다. 자동으로 최신 글을 가져오지는 않아요.").font(.caption).foregroundStyle(.secondary)
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("읽을거리").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("읽을거리").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .searchable(text: $search, prompt: "제목·본문 검색 (예: 수면 카페인)")
                 .toolbar { if isSheet { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } } }
                 .sheet(item: $selected) { ArticleDetailView(article: $0) }
@@ -150,7 +150,7 @@ struct ArticleDetailView: View {
                     Button("나중에 다시 읽기 · 읽지 않음으로 표시") { library.markUnread(article.id); dismiss() }.frame(minHeight: 44).accessibilityIdentifier("article-mark-unread")
                     sourceCard
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("건강 이야기").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("건강 이야기").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) { Button("닫기") { dismiss() }.accessibilityIdentifier("article-close") }
                     ToolbarItem(placement: .navigationBarTrailing) { Button { library.toggleSaved(article.id) } label: { Image(systemName: library.saved.contains(article.id) ? "bookmark.fill" : "bookmark") }.accessibilityLabel(library.saved.contains(article.id) ? "저장 취소" : "글 저장").accessibilityIdentifier("article-save") }
@@ -185,8 +185,8 @@ struct PublicArticleLibraryView: View {
                     MentalPublicResourcesView()
                     NCMHLibraryView()
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("마음건강 공공 자료")
-                .navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("마음건강 공공 자료")
+                .navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         }
     }

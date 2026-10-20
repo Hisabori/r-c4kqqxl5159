@@ -80,7 +80,7 @@ struct HealthRecordsView: View {
                 Text("의료 문서는 가져온 시각으로 기간을 조회해요. 실제 진료 날짜는 원문에서 확인합니다.").font(.caption).foregroundStyle(.secondary)
                 if let availability = journal.state.healthAvailability { DisclosureGroup("항목별 연결 상태") { ForEach(availability) { item in HStack { Text(item.title); Spacer(); Text(item.statusTitle).font(.caption).foregroundStyle(.secondary) }.padding(.vertical, 5) } }.careCard() }
             }.padding(22)
-        }.background(Color(.systemGroupedBackground)).navigationTitle("건강 데이터").searchable(text: $search, prompt: "항목·원본 앱·기기 검색")
+        }.background(CareAppearance.background).navigationTitle("건강 데이터").searchable(text: $search, prompt: "항목·원본 앱·기기 검색")
     }
 }
 struct HealthRecordList: View {

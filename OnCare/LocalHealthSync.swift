@@ -12,9 +12,9 @@ struct SyncPair: Codable, Equatable {
     func validate() throws {
         let pieces = host.split(separator: ".", omittingEmptySubsequences: false)
         let octets = pieces.compactMap { Int($0) }
-        guard version == 1, pieces.count == 4, octets.count == 4,
-              zip(pieces, octets).allSatisfy({ pair in String(pair.1) == pair.0 && (0...255).contains(pair.1) }),
-              octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1])),
+        guard (version == 1 || version == 2), ((version == 2 && host.isEmpty) || (pieces.count == 4 && octets.count == 4 &&
+              zip(pieces, octets).allSatisfy({ pair in String(pair.1) == pair.0 && (0...255).contains(pair.1) }) &&
+              (octets[0] == 10 || (octets[0] == 192 && octets[1] == 168) || (octets[0] == 172 && (16...31).contains(octets[1])))),
               port == 8766, UUID(uuidString: peer) != nil,
               token.range(of: #"^[A-Za-z0-9_-]{43}$"#, options: .regularExpression) != nil,
               fingerprint.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { throw CareError.invalid }
@@ -112,13 +112,32 @@ final class PinnedSyncDelegate: NSObject, URLSessionDelegate, URLSessionTaskDele
     @Published private(set) var status = "Android 연결을 등록해주세요."
     @Published private(set) var lastSync: Date?
     @Published var liveStatus = UserDefaults.standard.bool(forKey: "sync-live-status")
+    @Published var bluetooth = UserDefaults.standard.bool(forKey: "sync-bluetooth")
+    private var ble: BluetoothHealthSync?
     private var epoch = 0
     func connect(_ code: String) throws {
         let next = try SyncPair.decode(code); try SyncKeychain.save(next); epoch += 1; pair = next; lastSync = nil; status = "같은 Wi-Fi에서 연결을 확인해요."
     }
-    func disconnect() { epoch += 1; SyncKeychain.remove(); pair = nil; lastSync = nil; status = "연결을 해제했어요. 받은 기록은 보존돼요."; Task { await CareLiveStatus.finish() } }
+    func pauseBluetooth() { ble?.cancel() }
+    func disconnect() { ble?.cancel(); ble = nil; epoch += 1; SyncKeychain.remove(); pair = nil; lastSync = nil; status = "연결을 해제했어요. 받은 기록은 보존돼요."; Task { await CareLiveStatus.finish() } }
+    private func syncBluetooth(_ journal: Journal, pair: SyncPair) async {
+        let generation = epoch; busy = true; status = "블루투스로 Android 찾는 중 · 두 앱을 열어두세요"
+        let client = BluetoothHealthSync(); ble = client
+        defer { busy = false; ble = nil }
+        do {
+            let data = try await client.fetch(pair: pair)
+            guard epoch == generation else { return }
+            try Task.checkCancellation()
+            let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .millisecondsSince1970
+            let snapshot = try decoder.decode(HealthSnapshot.self, from: data)
+            let count = try journal.applyHealth(snapshot, pair: pair)
+            lastSync = Date(); status = "블루투스로 \(count)개 건강 기록 갱신"
+        } catch { if epoch == generation { status = "블루투스 연결 실패 · Android 연결 화면, 근처 기기 권한, 거리와 기록 크기(1MB 이하)를 확인해주세요. 받은 기록은 유지돼요." } }
+    }
     func sync(_ journal: Journal) async {
         guard let pair, !busy else { return }
+        if bluetooth { await syncBluetooth(journal, pair: pair); return }
+        guard !pair.host.isEmpty else { status = "셀룰러에서 등록한 연결이에요. 블루투스를 선택하거나 Wi-Fi 연결 QR을 다시 등록해주세요."; return }
         let generation = epoch; busy = true
         defer { busy = false }
         status = "Android 건강 기록 확인 중"
@@ -167,7 +186,7 @@ struct HealthConnectionView: View {
                     NavigationLink("Apple 건강·피트니스 연결") { AppleHealthView() }.accessibilityIdentifier("apple-health-open")
                     Text("iPhone·Apple Watch 기록은 Apple 건강에서 직접 읽고, Android 기록은 아래에서 연결해요.").font(.caption)
                 }
-                Section { Text("Android Health Connect → 같은 Wi-Fi → iPhone\n두 앱을 열어두면 1분마다 최신 기록을 확인해요. 원본에 쓰지 않으며 목표와 루틴은 바꾸지 않아요.") }
+                Section { Text("Android Health Connect → Wi-Fi 또는 블루투스 → iPhone\n두 앱을 열어두면 1분마다 최신 기록을 확인해요. 원본에 쓰지 않으며 목표와 루틴은 바꾸지 않아요.") }
                 Section("한 번만 연결") {
                     Text("Android 온케어의 Health Connect · iPhone 연결에서 읽기 권한을 허용하고, 연결 코드를 내 iPhone으로 보내주세요.").font(.subheadline)
                     Button("QR로 간편 연결") { scanning = true }.accessibilityIdentifier("sync-qr-scan")
@@ -175,6 +194,10 @@ struct HealthConnectionView: View {
                     TextField("oncare1: 연결 코드 붙여넣기", text: $code, axis: .vertical).lineLimit(2...4).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("sync-code")
                     if let parsed = try? SyncPair.decode(code) { Text("연결할 Android: " + parsed.host + " · 상단 기기 연결을 눌러 확인하세요.").font(.caption).accessibilityIdentifier("sync-qr-preview") }
                     if !error.isEmpty { Text(error).foregroundStyle(.red) }
+                }
+                Section("전송 방식") {
+                    Toggle("블루투스로 연결 · 셀룰러에서도", isOn: $sync.bluetooth).disabled(sync.busy).accessibilityIdentifier("sync-bluetooth")
+                    Text("켜면 같은 Wi-Fi 없이 가까운 Android에서 암호화해 가져와요. Android의 블루투스 연결을 켜고 연결 화면을 열어두세요. 1MB 이하를 지원하며 큰 기록은 Wi-Fi를 이용하세요. 셀룰러 인터넷으로 원격 기기에 연결하는 기능은 아니에요.").font(.caption)
                 }
                 Section("연결 상태") {
                     Text(sync.status).accessibilityIdentifier("sync-status")
@@ -199,13 +222,14 @@ struct HealthConnectionView: View {
                     Text("Wi-Fi 주소가 바뀌면 Android의 연결 코드를 다시 등록하세요. 연결 코드는 암호 키처럼 내 기기에만 전달하세요.").font(.caption)
                     Button("연결 해제", role: .destructive) { disconnecting = true }.disabled(sync.pair == nil).accessibilityIdentifier("sync-disconnect")
                 }
-            }.navigationTitle("건강 연결").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("건강 연결").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("기기 연결") { connect() }.disabled(sync.busy || code.isEmpty).accessibilityIdentifier("sync-connect") }
                     ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { hideKeyboard() } }
                 }
                 .sheet(isPresented: $scanning, onDismiss: { if let scannedCode { code = scannedCode; error = ""; self.scannedCode = nil } }) { PairQRScanView { scannedCode = $0; scanning = false } }
+                .onChange(of: sync.bluetooth) { UserDefaults.standard.set($0, forKey: "sync-bluetooth") }
                 .onChange(of: sync.liveStatus) { value in UserDefaults.standard.set(value, forKey: "sync-live-status"); if !value { Task { await CareLiveStatus.finish() } } }
                 .confirmationDialog("연결을 해제할까요?", isPresented: $disconnecting, titleVisibility: .visible) { Button("연결 해제", role: .destructive) { sync.disconnect() } } message: { Text("받은 건강 기록은 그대로 남고 자동 동기화만 중단돼요.") }
         }

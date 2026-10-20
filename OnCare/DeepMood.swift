@@ -1,0 +1,69 @@
+import SwiftUI
+
+enum DeepMood {
+    struct NoteDraft: Identifiable { let id = UUID(); let note: String }
+    static let styles = ["미드나잇", "로즈", "라일락"]
+    static let emotions = ["불안", "서운함", "외로움", "질투", "분노", "공허함", "지침", "슬픔", "그리움", "안도", "설렘", "편안함"]
+    static let contexts = ["연락", "관계", "혼자 있는 시간", "일·공부", "수면", "몸 상태", "이유 모름"]
+    static let energies = ["선택 안 함", "축 처짐", "중간", "들뜸·긴장"]
+    static func style(_ raw: String) -> String { styles.contains(raw) ? raw : styles[0] }
+    static func draft(prompt: Int, focus: String, emotions chosen: Set<String>, contexts context: Set<String>, intensity: Int?, energy: String) -> String {
+        let feelings = emotions.filter { chosen.contains($0) }.prefix(3)
+        let situations = contexts.filter { context.contains($0) }.prefix(2)
+        var lines = ["[내 마음 캡슐]"]
+        if !feelings.isEmpty { lines.append("섞인 감정: " + feelings.joined(separator: " · ")) }
+        if !situations.isEmpty { lines.append("마음이 움직인 상황: " + situations.joined(separator: " · ")) }
+        if let n = intensity, (0...10).contains(n) { lines.append("내가 고른 강도: \(n)/10 (0 아주 약함 · 10 아주 강함)") }
+        if energies.dropFirst().contains(energy) { lines.append("지금 에너지: " + energy) }
+        lines.append("\n" + DeepMind.template(prompt, focus: focus))
+        return lines.joined(separator: "\n")
+    }
+}
+
+struct DeepMoodComposer: View {
+    let write: (String) -> Void
+    @AppStorage("app-deep-focus") private var focus = "자유롭게"
+    @State private var prompt = 0
+    @State private var feelings = Set<String>()
+    @State private var contexts = Set<String>()
+    @State private var intensity = 5.0
+    @State private var useIntensity = false
+    @State private var energy = "선택 안 함"
+    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("마음은 하나만 고를 필요 없어").font(.title3.bold())
+            Text("지금 섞여 있는 감정, 최대 3개만 골라봐.").font(.subheadline).foregroundStyle(.secondary)
+            chips(DeepMood.emotions, selected: $feelings, limit: 3, prefix: "emotion")
+            Text("어떤 순간이었어? · 최대 2개").font(.headline)
+            chips(DeepMood.contexts, selected: $contexts, limit: 2, prefix: "context")
+            Toggle("감정 강도도 남길래", isOn: $useIntensity).accessibilityIdentifier("deep-mood-intensity-toggle")
+            if useIntensity {
+                Text("\(Int(intensity))/10 · 0 아주 약함 → 10 아주 강함").font(.subheadline).monospacedDigit()
+                Slider(value: $intensity, in: 0...10, step: 1).accessibilityLabel("감정 강도").accessibilityIdentifier("deep-mood-intensity")
+            }
+            Text("지금 에너지").font(.headline)
+            Picker("지금 에너지", selection: $energy) { ForEach(DeepMood.energies, id: \.self) { Text($0).tag($0) } }
+            Text("오늘 더 들여다볼 마음").font(.headline)
+            Picker("오늘 더 들여다볼 마음", selection: $focus) { ForEach(DeepMind.focuses, id: \.self) { Text($0).tag($0) } }
+            Text("어디까지 써볼까").font(.headline)
+            Picker("어디까지 써볼까", selection: $prompt) { ForEach(0..<DeepMind.prompts.count, id: \.self) { Text(DeepMind.prompts[$0]).tag($0) } }.accessibilityIdentifier("deep-mind-prompt")
+            Text(DeepMind.templates[prompt]).font(.subheadline).foregroundStyle(.secondary)
+            Button { write(DeepMood.draft(prompt: prompt, focus: focus, emotions: feelings, contexts: contexts, intensity: useIntensity ? Int(intensity) : nil, energy: energy)) } label: {
+                Label("마음 캡슐 열고 일기 쓰기", systemImage: "heart.text.square.fill").font(.headline).foregroundStyle(Color.black).frame(maxWidth: .infinity).padding(.vertical, 16)
+            }.buttonStyle(.borderedProminent).accessibilityIdentifier("deep-mind-write")
+            Text("선택은 초안이야. 다음 화면에서 고치고 저장해야 기록돼. 강도는 네 표현이고, 건강 점수로 환산하지 않아.").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    private func chips(_ choices: [String], selected: Binding<Set<String>>, limit: Int, prefix: String) -> some View {
+        LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(choices, id: \.self) { item in
+                let on = selected.wrappedValue.contains(item)
+                Button {
+                    if on { selected.wrappedValue.remove(item) } else if selected.wrappedValue.count < limit { selected.wrappedValue.insert(item) }
+                } label: { HStack { Text(item); Spacer(); Image(systemName: on ? "checkmark.circle.fill" : "circle") }.font(.subheadline.weight(.medium)).padding(12).frame(minHeight: 48).background(on ? Color.pink.opacity(0.23) : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(on ? Color.pink : Color.white.opacity(0.12))) }
+                .buttonStyle(.plain).disabled(!on && selected.wrappedValue.count >= limit).accessibilityLabel(item).accessibilityValue(on ? "선택됨" : "선택 안 됨").accessibilityIdentifier("deep-mood-\(prefix)-\(item)")
+            }
+        }
+    }
+}

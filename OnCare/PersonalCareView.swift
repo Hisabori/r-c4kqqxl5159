@@ -46,7 +46,7 @@ struct CrisisSupportView: View {
             Link("상담 안내 · 보건복지상담센터", destination: URL(string: "https://www.129.go.kr/109?oai_link_source=model_response_hotline")!)
             Link("긴급 신고 안내 · 국민재난안전포털", destination: URL(string: "https://safekorea.go.kr/idsiSFK/neo/main_m/nat/downpour.html?menuTab=1")!)
             Text("확인일 2026.10.15 · 안내는 오프라인에서도 볼 수 있어요. 전화와 웹 연결은 기기·통신 상태에 따라 달라요.").font(.caption).foregroundStyle(.secondary)
-        }.padding(22) }.background(Color(.systemGroupedBackground)).navigationTitle("도움과 위기지원").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.alert("전화 화면을 열지 못했어요", isPresented: $failed) { Button("확인", role: .cancel) {} } message: { Text("안내된 번호를 전화 앱에 직접 입력해주세요.") } }
+        }.padding(22) }.background(CareAppearance.background).navigationTitle("도움과 위기지원").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.alert("전화 화면을 열지 못했어요", isPresented: $failed) { Button("확인", role: .cancel) {} } message: { Text("안내된 번호를 전화 앱에 직접 입력해주세요.") } }
     }
     private func resource(_ title: String, number: String, detail: String, url: String) -> some View {
         VStack(alignment: .leading, spacing: 10) { Text(title).font(.headline); Text(detail).foregroundStyle(.secondary); Button { openURL(URL(string:url)!) { accepted in if !accepted { failed = true } } } label: { Label(number + " · 전화 화면 열기", systemImage: "phone.fill").font(.title3.bold()).frame(minHeight: 48) } }.careCard()

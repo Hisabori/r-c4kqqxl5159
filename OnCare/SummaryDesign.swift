@@ -69,7 +69,7 @@ struct SummaryMetricCard: View {
                 if latest == nil { Text("데이터 없음 · 기록이나 건강 연결로 시작해요").font(.caption).foregroundStyle(.secondary) }
                 if highlight { Text("오늘 포함 · 없는 날짜는 0으로 채우지 않아요.").font(.caption2).foregroundStyle(.secondary) }
             }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 30))
+                .background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 30))
         }.buttonStyle(.plain).accessibilityIdentifier((highlight ? "summary-highlight-" : "summary-pinned-") + kind)
     }
     private var todayValue: String {
@@ -111,7 +111,7 @@ struct SummaryPinEditor: View {
                     }
                 }
                 Text("선택한 순서로 표시해요. 기록과 목표는 바꾸지 않습니다.").font(.caption).foregroundStyle(.secondary)
-            }.navigationTitle("고정 항목 편집").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("고정 항목 편집").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("완료") { dismiss() } } }
         }
     }

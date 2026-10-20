@@ -21,7 +21,7 @@ struct GoalEditor: View {
                     goal("하루 수면 · 시간", text: $sleep, id: "goal-sleep")
                 }
                 if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
-            }.navigationTitle("나에게 맞는 목표").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("나에게 맞는 목표").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button("저장") { save() }.accessibilityIdentifier("goals-save") } }
                 .onAppear { let g = journal.goals; weight = g.weight > 0 ? rawNumber(g.weight) : ""; exercise = rawNumber(g.exercise); water = rawNumber(g.water); sleep = rawNumber(g.sleep) }
         }
@@ -51,7 +51,7 @@ struct RoutineEditor: View {
                     Text("\(title.count) / 40자").font(.caption2).foregroundStyle(.secondary)
                 }
                 if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
-            }.navigationTitle("나의 루틴 만들기").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("나의 루틴 만들기").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("추가") { if journal.addRoutine(title) { dismiss() } else { error = "이미 있는 루틴이거나 최대 8개를 채웠어요. 저장 공간도 확인해주세요." } }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || title.count > 40).accessibilityIdentifier("routine-add") }
@@ -76,7 +76,7 @@ struct ReminderEditor: View {
                 Section { Toggle("하루 기록 알림",isOn: $enabled).accessibilityIdentifier("reminder-toggle"); DatePicker("매일 알림 시간",selection: $time,displayedComponents: .hourAndMinute) }
                 Section { Text("알림을 켤 때만 권한을 요청해요. 집중 모드나 휴대폰 설정에 따라 도착이 늦어질 수 있어요.").font(.caption).foregroundStyle(.secondary); Button("휴대폰 알림 설정 열기") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } }
                 if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
-            }.disabled(saving).navigationTitle("하루 기록 알림").navigationBarTitleDisplayMode(.inline)
+            }.disabled(saving).navigationTitle("하루 기록 알림").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() }.disabled(saving) }; ToolbarItem(placement: .confirmationAction) { Button(saving ? "저장 중" : "저장") { save() }.disabled(saving).accessibilityIdentifier("reminders-save") } }.interactiveDismissDisabled(saving)
         }
     }
@@ -137,7 +137,7 @@ struct HistoryView: View {
                     }.careCard()
                     Text(CareAppVersion.label + " · 개인 기록용 앱\n진단이나 치료를 제공하지 않아요.").accessibilityIdentifier("app-version").font(.caption).foregroundStyle(.secondary)
                 }.padding(22)
-            }.scrollDismissesKeyboard(.interactively).background(Color(.systemGroupedBackground)).navigationTitle("기록").navigationBarTitleDisplayMode(.inline)
+            }.scrollDismissesKeyboard(.interactively).background(CareAppearance.background).navigationTitle("기록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to: nil,from: nil,for: nil) } } }
                 .sheet(item: $editing) { RecordView(kind: $0.kind,existing: $0) }.sheet(isPresented: $reminders) { ReminderEditor() }.sheet(isPresented: $sharing) { PersonalShareView() }
                 .fileExporter(isPresented: $exporting,document: document,contentType: .json,defaultFilename: "OnCare-"+dateKey(Date())) { result in switch result { case .success: journal.notice = "기록과 목표, 루틴을 백업했어요."; case .failure(let error): if !isFileSelectionCancelled(error) { journal.notice = "백업 파일을 저장하지 못했어요." } } }
@@ -156,6 +156,9 @@ struct HistoryView: View {
 }
 
 struct AppPreferencesView: View {
+    @EnvironmentObject private var medications: MedicationStore
+    @AppStorage("app-deep-explicit") private var explicit = false
+    @AppStorage("app-deep-mind") private var deepMind = false
     @Environment(\.dismiss) private var dismiss
     @AppStorage("app-theme") private var theme = "system"
     @AppStorage("app-start-tab") private var startTab = 0
@@ -168,12 +171,14 @@ struct AppPreferencesView: View {
                 Picker("앱 시작 화면", selection: $startTab) { Text("오늘").tag(0); Text("마음").tag(1); Text("건강").tag(2); Text("기록").tag(3); Text("읽을거리").tag(4) }.accessibilityIdentifier("preferences-start-tab")
                 Text("시작 화면은 다음 앱 실행부터 적용해요. 바로가기 링크는 요청한 화면을 먼저 엽니다.").font(.caption).foregroundStyle(.secondary)
             }
+            Section("마음 깊이 보기") { Picker("마음의 방 테마", selection: Binding(get: { UserDefaults.standard.string(forKey: "app-deep-style") ?? "미드나잇" }, set: { UserDefaults.standard.set($0, forKey: "app-deep-style") })) { ForEach(DeepMood.styles, id: \.self) { Text($0).tag($0) } }.disabled(!deepMind); Toggle("멘헤라 모드", isOn: $deepMind).accessibilityIdentifier("preferences-deep-mind"); Toggle("욕설 투약 알림 문구", isOn: $explicit).disabled(!deepMind).accessibilityIdentifier("preferences-deep-explicit"); Text("모드와 이 옵션을 모두 켜면 알림 제목이 ‘시발 처먹어 ㅋㅋㅋㅋ’로 나와요. 알림 본문은 복용 여부부터 확인하게 안내해요. 잠금화면에도 문구가 보일 수 있어요. 약 이름은 넣지 않아요. 알림·집중 모드 설정은 휴대폰 설정을 따릅니다.").font(.caption).foregroundStyle(.secondary); Text("켜면 앱 전체가 선택한 마음의 방 테마와 반말 안내로 바뀌어요. 일반 테마보다 우선하며 끄면 기존 테마로 돌아가요. 마음 화면에는 두 주간 기록 비교와 심층 일기 질문도 보여줘요. 모드 이름은 진단명이 아니며 기본값은 꺼짐이에요. 꺼도 일기는 유지돼요.").font(.caption).foregroundStyle(.secondary) }
             Section("개인화와 도움") { NavigationLink("나에게 맞추기") { PersonalCareSettingsView() }; NavigationLink("도움과 위기지원") { CrisisSupportView() } }
             Section("기록 기본값") { Picker("마음 기록 조회 기간", selection: $moodDays) { Text("7일").tag(7); Text("30일").tag(30) }; Text("마음 화면을 새로 열 때 적용해요.").font(.caption).foregroundStyle(.secondary) }
-            Section("알림과 앱 정보") { NavigationLink("하루 기록 알림") { ReminderEditor() }; Text("온케어 " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") + " · 빌드 " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")); Text("설정은 이 기기에 저장돼요. 건강 기록·투약 일정·연결 정보를 바꾸지 않습니다.").font(.caption).foregroundStyle(.secondary) }
+            Section("알림과 앱 정보") { Text(medications.status).font(.caption).foregroundStyle(.secondary); Button("투약 알림 문구 다시 적용") { Task { await medications.refresh() } }.accessibilityIdentifier("preferences-medication-refresh"); Text("문구 갱신이 실패하면 기존 알림이 남을 수 있어요. 알림 상태를 확인하고 다시 적용해주세요.").font(.caption).foregroundStyle(.secondary); NavigationLink("하루 기록 알림") { ReminderEditor() }; Text("온케어 " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") + " · 빌드 " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")); Text("설정은 이 기기에 저장돼요. 건강 기록·투약 일정·연결 정보를 바꾸지 않습니다.").font(.caption).foregroundStyle(.secondary) }
             Section { Button("환경설정 기본값으로 복원") { reset = true }.accessibilityIdentifier("preferences-reset") }
-        }.navigationTitle("앱 환경설정").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
-        .confirmationDialog("환경설정만 기본값으로 복원할까요?", isPresented: $reset, titleVisibility: .visible) { Button("기본값 복원") { theme = "system"; startTab = 0; moodDays = 7 } }
+        }.navigationTitle("앱 환경설정").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
+        .onChange(of: deepMind) { _ in Task { await medications.refresh() } }.onChange(of: explicit) { _ in Task { await medications.refresh() } }
+        .confirmationDialog("환경설정만 기본값으로 복원할까요?", isPresented: $reset, titleVisibility: .visible) { Button("기본값 복원") { theme = "system"; startTab = 0; moodDays = 7; deepMind = false; explicit = false } }
         }
     }
 }

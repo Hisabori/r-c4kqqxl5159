@@ -28,7 +28,7 @@ struct NativeMentalResourceDetail: View {
                 Text(resource.body).font(.body).lineSpacing(7).textSelection(.enabled)
                 if resource.aiAllowed { ArticleIntelligencePanel(text: resource.body) }
                 Button("공식 원문 · 앱 안에서 열기") { source = true }.frame(minHeight: 44)
-            }.padding(24) }.background(Color(.systemGroupedBackground))
+            }.padding(24) }.background(CareAppearance.background)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
                 .sheet(isPresented: $source) { ArticleSourceView(url: resource.url).ignoresSafeArea() }
         }
@@ -99,7 +99,7 @@ struct NCMHLibraryView: View {
                     Label("NCMH · 정신건강 소식지", systemImage: "book.closed.fill").font(.caption).foregroundStyle(Palette.teal)
                     Text(item.title).font(.title3.bold()).foregroundStyle(.primary)
                     Text("자료 등록월 " + item.registeredMonth + " · 앱에서 읽기").font(.caption).foregroundStyle(.secondary)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(20).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 26)) }.buttonStyle(.plain)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(20).background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 26)) }.buttonStyle(.plain)
             }
         }.task { await library.refresh() }.sheet(item: $selected) { NCMHPDFReader(publication: $0) }
     }
@@ -124,7 +124,7 @@ struct NCMHPDFReader: View {
                 if let document { NCMHPDFSurface(document: document) }
                 else if !error.isEmpty { Text(error).padding(); Button("다시 시도") { request += 1 } }
                 else { Spacer(); ProgressView("원문을 가져오는 중…"); Text("문서 크기에 따라 데이터와 시간이 필요해요.").font(.caption); Spacer() }
-            }.navigationTitle("정신건강 소식지").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("정신건강 소식지").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
                 .task(id: request) {
                     error = ""

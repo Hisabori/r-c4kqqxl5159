@@ -40,7 +40,7 @@ struct PersonalShareView: View {
                     Text("이름은 이 화면에서만 사용해요. 기록이 있는 날짜만 계산하며, 없는 기록은 채우지 않아요.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section { Button("공유 내용 미리보기") { preview = PersonalShareReport.text(entries: journal.entries, kinds: selected, days: days, name: name) }.disabled(selected.isEmpty).accessibilityIdentifier("share-preview") }
-            }.navigationTitle("나의 정보 공유하기").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("나의 정보 공유하기").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
                 .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) { previewView }
         }
@@ -53,7 +53,7 @@ struct PersonalShareView: View {
                     Text("선택한 앱으로 보내면 해당 앱과 수신자가 이 내용을 볼 수 있어요.").font(.caption).foregroundStyle(.secondary)
                     ShareLink(item: preview ?? "") { Label("이 내용 공유하기", systemImage: "square.and.arrow.up") }.accessibilityIdentifier("share-send")
                 }.padding(22)
-            }.navigationTitle("공유 내용 확인").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("공유 내용 확인").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("돌아가기") { preview = nil } } }
         }
     }

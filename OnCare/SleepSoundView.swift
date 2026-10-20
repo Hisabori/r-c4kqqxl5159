@@ -145,6 +145,6 @@ struct SleepSoundView: View {
             }.careCard() }
             Text("최근 7회, 회당 최대 8시간을 보관해요. 통화·마이크 경로 변경·앱 강제 종료로 중단될 수 있으며 자동 재시작하지 않습니다. 앱 삭제 시 요약도 삭제됩니다.").font(.caption).foregroundStyle(.secondary)
             Button("소리 요약 전체 삭제", role: .destructive) { deleting = true }.disabled(store.running || store.starting)
-        }.padding(22) }.background(Color(.systemGroupedBackground)).navigationTitle("수면 소리 기록").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.confirmationDialog("소리 요약을 모두 삭제할까요?", isPresented: $deleting) { Button("삭제", role: .destructive) { store.deleteHistory() } } }
+        }.padding(22) }.background(CareAppearance.background).navigationTitle("수면 소리 기록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.confirmationDialog("소리 요약을 모두 삭제할까요?", isPresented: $deleting) { Button("삭제", role: .destructive) { store.deleteHistory() } } }
     }
 }

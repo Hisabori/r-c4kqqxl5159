@@ -33,7 +33,7 @@ struct PracticeView: View {
                         Text("지원 iPhone에서는 다이내믹 아일랜드에도 표시돼요. 개인 이름·마음·투약 정보는 표시하지 않아요. 앱에서 시작·일시정지·완료하며, 운영체제가 표시 시간을 제한할 수 있어요.").font(.caption).foregroundStyle(.secondary)
                     } else if section == 1 { routineCards } else { PracticeInsightsView(day: Calendar.current.startOfDay(for: now)) }
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("실천 센터").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("실천 센터").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
                 .confirmationDialog("운동 세션을 초기화할까요?", isPresented: $resetting, titleVisibility: .visible) {
                     Button("세션 초기화", role: .destructive) { perform { try workout.reset(); message = "새 운동을 시작할 수 있어요." } }.accessibilityIdentifier("workout-reset-confirm")

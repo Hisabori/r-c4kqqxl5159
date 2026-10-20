@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import Combine
 
 struct MedicationHomeCard: View {
+    @AppStorage("app-deep-mind") private var deepMind = false
     @EnvironmentObject private var store: MedicationStore
     let open: () -> Void
     @State private var now = Date()
@@ -11,10 +12,11 @@ struct MedicationHomeCard: View {
     private var confirmed: Int { plans.filter { store.checked($0.id, now: now) }.count }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("오늘의 복용 확인", systemImage: "pills.fill").font(.headline).foregroundStyle(Palette.teal)
+            Label(deepMind ? "제일 먼저, 복용 여부부터 확인하자" : "오늘의 복용 확인", systemImage: "pills.fill").font(.headline).foregroundStyle(Palette.teal)
             if !store.readable { Text("일정 파일을 확인하거나 투약 백업을 가져와주세요.").font(.subheadline).foregroundStyle(.secondary) }
             else if plans.isEmpty { Text("오늘 예정된 일정이 없어요").font(.subheadline).foregroundStyle(.secondary) }
             else { Text("오늘 \(confirmed) / \(plans.count)개 확인").font(.title2.bold()).accessibilityIdentifier("medication-home-count"); Text("직접 남긴 확인 기록이에요. 확인 없음이 미복용을 뜻하지는 않아요.").font(.caption).foregroundStyle(.secondary) }
+            if deepMind && store.readable { Text(plans.contains { !store.checked($0.id, now: now) && $0.hour*60+$0.minute <= Calendar.current.component(.hour, from: now)*60+Calendar.current.component(.minute, from: now) } ? "아직 확인 안 했네. 미루지 말고 복용 여부부터 확인하자. 이미 먹었으면 추가로 먹지 마." : "오늘 일정과 네가 남긴 확인 기록부터 보자.").font(.subheadline) }
             CareButton(title: "투약 알림 · 복용 일정 확인", color: Palette.teal, id: "medication-open", action: open)
         }.careCard().onReceive(timer) { now = $0 }.onAppear { now = Date() }
     }
@@ -35,7 +37,7 @@ struct MedicationHistoryView: View {
                         ForEach(day.confirmed) { plan in Label(plan.name + " · " + plan.timeLabel, systemImage: "checkmark.circle.fill").foregroundStyle(Palette.teal) }
                     }
                 }
-            }.navigationTitle("복용 확인 기록").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("복용 확인 기록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
         }
     }
@@ -67,7 +69,7 @@ struct MedicationBackupView: View {
                 }
                 if let pending { preview(pending) }
                 if let message { Section { Text(message).accessibilityIdentifier("medication-backup-message") } }
-            }.disabled(busy).navigationTitle("투약 백업").navigationBarTitleDisplayMode(.inline)
+            }.disabled(busy).navigationTitle("투약 백업").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() }.disabled(busy) } }
                 .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "OnCare-Medications-" + dateKey(Date())) { result in switch result { case .success: message = "투약 백업을 저장했어요."; case .failure(let error): if !isFileSelectionCancelled(error) { message = "파일을 저장하지 못했어요." } } }
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { read($0) }

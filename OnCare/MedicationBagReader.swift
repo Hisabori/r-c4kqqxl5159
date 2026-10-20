@@ -42,7 +42,7 @@ struct MedicationBagReader: View {
                 }.padding(.vertical, 4)
             } }
             Section { Text("인식 오류가 있을 수 있어요. 용량·시간·요일은 자동으로 정하지 않으며 알림은 꺼진 상태로 돌아갑니다. 원본을 확인한 뒤 일정을 직접 저장하세요.").font(.caption).foregroundStyle(.secondary) }
-        }.navigationTitle("약봉지 글자 인식").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
+        }.navigationTitle("약봉지 글자 인식").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
         .task(id: photo) {
             guard let selected = photo else { return }; busy = true; lines = []; message = ""; query = ""
             do { guard let data = try await selected.loadTransferable(type: Data.self) else { throw CareError.invalid }

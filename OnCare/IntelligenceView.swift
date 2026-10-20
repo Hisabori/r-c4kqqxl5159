@@ -122,7 +122,7 @@ struct IntelligenceContent: View {
                 }
                 Text("AI가 만든 내용은 틀릴 수 있어요. 진단·치료·체중 감량 처방이 아닌 기록 회고이며, 실제 기록과 함께 확인해주세요.").font(.caption).foregroundStyle(.secondary)
             }.padding(24)
-        }.background(Color(.systemGroupedBackground)).navigationTitle("나의 기록 인사이트").navigationBarTitleDisplayMode(.inline)
+        }.background(CareAppearance.background).navigationTitle("나의 기록 인사이트").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
             .onAppear { refreshAvailability() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { refreshAvailability() } else { invalidate() } }
             .onChange(of: days) { _, _ in invalidate() }

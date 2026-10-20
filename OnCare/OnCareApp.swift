@@ -3,14 +3,14 @@ import Charts
 import Combine
 
 enum Palette {
-    static let blue = Color(red: 0.22, green: 0.49, blue: 0.96)
+    static var blue: Color { CareAppearance.enabled ? CareAppearance.accent : Color(red: 0.22, green: 0.49, blue: 0.96) }
     static let teal = Color(red: 0.09, green: 0.66, blue: 0.61)
-    static let purple = Color(red: 0.55, green: 0.45, blue: 0.85)
+    static var purple: Color { CareAppearance.enabled ? CareAppearance.accent : Color(red: 0.55, green: 0.45, blue: 0.85) }
     static let coral = Color(red: 0.91, green: 0.56, blue: 0.47)
     static func color(_ kind: String) -> Color { kind == "마음" || kind == "수면" ? purple : kind == "체중" ? coral : kind == "운동" ? teal : blue }
 }
 extension View {
-    func careCard() -> some View { padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24)) }
+    func careCard() -> some View { padding(20).frame(maxWidth: .infinity, alignment: .leading).background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 24)) }
 }
 struct CareButton: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -20,7 +20,7 @@ struct CareButton: View {
     var id = ""
     let action: () -> Void
     var body: some View {
-        Button(action: action) { Text(title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 15).foregroundStyle(filled ? .white : color) .modifier(CareControlSurface(color: color, filled: filled, reduceTransparency: reduceTransparency)) }
+        Button(action: action) { Text(title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 15).foregroundStyle(filled ? (CareAppearance.enabled && color == Palette.blue ? .black : .white) : color) .modifier(CareControlSurface(color: color, filled: filled, reduceTransparency: reduceTransparency)) }
             .buttonStyle(.plain).accessibilityIdentifier(id)
     }
 }
@@ -103,10 +103,12 @@ struct SheetContents: View {
     @StateObject private var journal = Journal()
     @StateObject private var sync = LocalHealthSync()
     @AppStorage("app-theme") private var theme = "system"
+    @AppStorage("app-deep-mind") private var deepMind = false
+    @AppStorage("app-deep-style") private var deepStyle = "미드나잇"
     init() { CareAppShortcuts.updateAppShortcutParameters() }
     var body: some Scene {
         WindowGroup {
-            RootView().preferredColorScheme(theme == "dark" ? .dark : theme == "light" ? .light : nil).environmentObject(journal).environmentObject(sync).environmentObject(shortcuts).environmentObject(articles).environmentObject(medications).tint(Palette.blue).environment(\.locale, Locale(identifier: "ko_KR"))
+            RootView().modifier(CareThemeSurface()).preferredColorScheme(deepMind ? .dark : theme == "dark" ? .dark : theme == "light" ? .light : nil).environmentObject(journal).environmentObject(sync).environmentObject(shortcuts).environmentObject(articles).environmentObject(medications).tint(deepMind ? CareAppearance.accent(for: deepStyle) : Palette.blue).environment(\.locale, Locale(identifier: "ko_KR"))
                 .onOpenURL { let accepted = shortcuts.open($0); print("OnCare link received at app root: accepted=\(accepted)") }
                 .alert("온케어 안내", isPresented: Binding(get: { journal.notice != nil }, set: { if !$0 { journal.notice = nil } })) { Button("확인") { journal.notice = nil } } message: { Text(journal.notice ?? "") }
         }
@@ -152,7 +154,7 @@ struct RootView: View {
             while !Task.isCancelled { await sync.sync(journal); do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break } }
         }.onReceive(calendarTimer) { _ in journal.refreshCalendar() }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in journal.refreshCalendar(force: true) }
-            .onChange(of: scenePhase) { if $0 == .active { journal.refreshCalendar(force: true) } }
+            .onChange(of: scenePhase) { if $0 == .active { journal.refreshCalendar(force: true) } else { sync.pauseBluetooth() } }
             .task(id: CareShortcutTaskKey(request: shortcuts.pending?.id, active: scenePhase == .active, windowReady: windowReady, windowGeneration: windowReference.generation)) {
                 guard scenePhase == .active, windowReady, let request = shortcuts.pending, let window = windowReference.window else { print("OnCare link deferred: active=\(scenePhase == .active), ready=\(windowReady), window=\(windowReference.window != nil), pending=\(shortcuts.pending != nil)"); return }
                 // Dismiss the current form without saving it. Recreate only tab view state so its local modal bindings cannot reopen.
@@ -167,6 +169,7 @@ struct RootView: View {
     }
 }
 struct Dashboard: View {
+    @AppStorage("app-deep-mind") private var deepMind = false
     @EnvironmentObject var journal: Journal
     @State private var sheet: CareSheet?
     @State private var editingPins = false
@@ -177,7 +180,8 @@ struct Dashboard: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) { Text(koreanDate(Date(), weekday: true)).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text("오늘도, 나답게").font(.largeTitle.bold()); Text("몸과 마음의 이야기를 만나보세요").font(.subheadline).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 8) { Text(koreanDate(Date(), weekday: true)).font(.caption.weight(.semibold)).foregroundStyle(.secondary); Text(deepMind ? "오늘도 네 편이야 ♡" : "오늘도, 나답게").font(.largeTitle.bold()); Text(deepMind ? "약부터 확인하고, 네 속도로 하루를 남겨." : "몸과 마음의 이야기를 만나보세요").font(.subheadline).foregroundStyle(.secondary) }
+                    if deepMind { MedicationHomeCard { sheet = .medications } }
                     PersonalCareCard()
                     quickLog
                     pinnedSection
@@ -186,7 +190,7 @@ struct Dashboard: View {
                     CareButton(title: "✦ Apple Intelligence로 돌아보기", id: "intelligence-open") { sheet = .intelligence }
                     SectionTitle(title: "오늘의 작은 실천")
                     routineCard
-                    MedicationHomeCard { sheet = .medications }
+                    if !deepMind { MedicationHomeCard { sheet = .medications } }
                     SectionTitle(title: "지금의 나, 한눈에")
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         metric("체중", value: journal.latest("체중").map { number($0.value) } ?? "—", detail: "최근 기록", sheet: .weight)
@@ -218,7 +222,7 @@ struct Dashboard: View {
         }
     }
     private var summaryBackground: some View {
-        ZStack(alignment: .top) { Color(.systemGroupedBackground); LinearGradient(colors: [Palette.purple.opacity(0.38), Palette.coral.opacity(0.18), Color(.systemGroupedBackground).opacity(0)], startPoint: .topLeading, endPoint: .bottomTrailing).frame(height: 390).allowsHitTesting(false) }.ignoresSafeArea()
+        ZStack(alignment: .top) { CareAppearance.background; LinearGradient(colors: [Palette.purple.opacity(0.38), Palette.coral.opacity(0.18), CareAppearance.background.opacity(0)], startPoint: .topLeading, endPoint: .bottomTrailing).frame(height: 390).allowsHitTesting(false) }.ignoresSafeArea()
     }
     private var quickLog: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -232,7 +236,7 @@ struct Dashboard: View {
         }
     }
     private func quickTile(_ title: String, kind: String?, icon: String, selection: CareSheet, id: String) -> some View {
-        Button { sheet = selection } label: { HStack(spacing: 12) { Image(systemName: icon).font(.title2).foregroundStyle(kind.map(SummaryMetrics.color) ?? Palette.teal); VStack(alignment: .leading, spacing: 5) { Text(title).font(.headline).foregroundStyle(.primary); Text(kind.flatMap { journal.latest($0) }.map { koreanDate($0.date) } ?? (kind == nil ? "복용 일정 확인" : "기록 시작하기")).font(.caption).foregroundStyle(.secondary) }; Spacer(minLength: 0) }.padding(18).frame(maxWidth: .infinity, minHeight: 88).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24)) }.buttonStyle(.plain).accessibilityIdentifier(id)
+        Button { sheet = selection } label: { HStack(spacing: 12) { Image(systemName: icon).font(.title2).foregroundStyle(kind.map(SummaryMetrics.color) ?? Palette.teal); VStack(alignment: .leading, spacing: 5) { Text(title).font(.headline).foregroundStyle(.primary); Text(kind.flatMap { journal.latest($0) }.map { koreanDate($0.date) } ?? (kind == nil ? "복용 일정 확인" : "기록 시작하기")).font(.caption).foregroundStyle(.secondary) }; Spacer(minLength: 0) }.padding(18).frame(maxWidth: .infinity, minHeight: 88).background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 24)) }.buttonStyle(.plain).accessibilityIdentifier(id)
     }
     private var pinnedSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -252,7 +256,7 @@ struct Dashboard: View {
                 SummaryMetricCard(kind: "수면", highlight: true) { sheet = .sleepRoutine }
                 SummaryMetricCard(kind: "마음", highlight: true) { sheet = .mood }
             }
-            Button { showingHighlights.toggle() } label: { HStack { Label(showingHighlights ? "하이라이트 접기" : "모든 하이라이트 보기", systemImage: "list.bullet.clipboard"); Spacer(); Image(systemName: "chevron.right") }.padding(20).background(Color(.secondarySystemGroupedBackground), in: Capsule()) }.buttonStyle(.plain).accessibilityIdentifier("summary-highlights-all")
+            Button { showingHighlights.toggle() } label: { HStack { Label(showingHighlights ? "하이라이트 접기" : "모든 하이라이트 보기", systemImage: "list.bullet.clipboard"); Spacer(); Image(systemName: "chevron.right") }.padding(20).background(CareAppearance.card, in: Capsule()) }.buttonStyle(.plain).accessibilityIdentifier("summary-highlights-all")
         }
     }
     private func summarySheet(_ kind: String) -> CareSheet { switch kind { case "걸음": return .healthConnection; case "마음": return .mood; case "수면": return .sleepRoutine; case "체중": return .weight; case "운동": return .exercise; default: return .water } }
@@ -271,7 +275,7 @@ struct Dashboard: View {
                 }
             }
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 30))
+            .background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 30))
             .overlay(alignment: .topTrailing) { Circle().fill(Palette.coral.opacity(0.04)).frame(width: 130, height: 130).offset(x: 30, y: -35).allowsHitTesting(false).accessibilityHidden(true) }
             .clipShape(RoundedRectangle(cornerRadius: 30))
     }

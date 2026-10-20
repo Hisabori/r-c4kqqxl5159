@@ -14,12 +14,12 @@ struct RecordView: View {
     @State private var sets: String
     @State private var reps: String
     @State private var error = ""
-    init(kind: String, existing: Entry? = nil, initialMood: Int = 3, initialType: String = "걷기") {
+    init(kind: String, existing: Entry? = nil, initialMood: Int = 3, initialType: String = "걷기", initialNote: String = "") {
         self.kind = kind; self.existing = existing
         _value = State(initialValue: existing.map { rawNumber($0.value) } ?? "")
         _mood = State(initialValue: Int(existing?.value ?? Double(initialMood)))
         _date = State(initialValue: existing?.date ?? Date())
-        _note = State(initialValue: existing?.note ?? "")
+        _note = State(initialValue: existing?.note ?? initialNote)
         _exerciseType = State(initialValue: existing?.type ?? initialType)
         _sets = State(initialValue: existing?.sets.flatMap { $0 > 0 ? String($0) : nil } ?? "")
         _reps = State(initialValue: existing?.reps.flatMap { $0 > 0 ? String($0) : nil } ?? "")
@@ -61,7 +61,7 @@ struct RecordView: View {
                 Section(kind == "마음" ? "오늘의 이야기 (선택)" : "메모 (선택)") { TextField("편하게 적어주세요", text: $note, axis: .vertical).lineLimit(3...6).accessibilityIdentifier("record-note").careWritingTools() }
                 if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
                 if !valid && !value.isEmpty { Section { Text("숫자 범위와 선택 항목을 확인해주세요.").font(.caption).foregroundStyle(.secondary) } }
-            }.navigationTitle(kind + (existing == nil ? " 기록" : " 기록 수정")).navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle(kind + (existing == nil ? " 기록" : " 기록 수정")).navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) { Button("저장") { save() }.disabled(!valid).accessibilityIdentifier("record-save") }
@@ -97,6 +97,7 @@ struct EntryCard: View {
     }
 }
 struct MindView: View {
+    @AppStorage("app-deep-mind") private var deepMind = false
     @EnvironmentObject var journal: Journal
     @State private var mood: Int?
     @State private var sheet: CareSheet?
@@ -109,9 +110,10 @@ struct MindView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("마음에 귀 기울이는 시간").font(.largeTitle.bold())
+                    Text(deepMind ? "마음, 더 깊이 들여다보기" : "마음에 귀 기울이는 시간").font(.largeTitle.bold())
+                    if deepMind { DeepMindCard() }
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("지금의 마음은 어떤가요?").font(.headline); Text("감정을 고르고, 오늘의 이야기를 남겨보세요.").font(.subheadline).foregroundStyle(.secondary)
+                        Text(deepMind ? "지금 네 마음, 어때?" : "지금의 마음은 어떤가요?").font(.headline); Text(deepMind ? "예쁘게 정리 안 해도 돼. 있는 그대로 남겨." : "감정을 고르고, 오늘의 이야기를 남겨보세요.").font(.subheadline).foregroundStyle(.secondary)
                         HStack { ForEach(1...5, id: \.self) { score in Button { mood = score } label: { VStack(spacing: 8) { MoodFace(score: score); Text(["힘듦", "지침", "보통", "좋음", "행복"][score-1]).font(.caption2).foregroundStyle(.secondary) }.frame(maxWidth: .infinity) }.buttonStyle(.plain).accessibilityIdentifier("mood-choice-\(score)") } }
                     }.careCard()
                     MindRecoveryCard(entries: journal.entries, breathe: { sheet = .breathing }, write: { mood = 3 })
@@ -128,7 +130,7 @@ struct MindView: View {
                     ForEach(Array(diary.prefix(100))) { e in VStack(alignment: .leading, spacing: 6) { Text(e.date, format: .dateTime.month().day()).font(.caption).foregroundStyle(.secondary); EntryCard(entry: e) { editing = e } } }
                     if diary.count > 100 { Text("최근 100개를 표시해요. 검색어로 좁혀보세요.").font(.caption).foregroundStyle(.secondary) }
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("마음").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("마음").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .sheet(isPresented: Binding(get: { mood != nil }, set: { if !$0 { mood = nil } })) { RecordView(kind: "마음", initialMood: mood ?? 3) }
                 .sheet(item: $sheet) { SheetContents(sheet: $0) }.sheet(item: $editing) { RecordView(kind: $0.kind, existing: $0) }
         }
@@ -150,7 +152,7 @@ struct BreathingView: View {
                 ZStack { Circle().stroke(Palette.purple.opacity(0.12), lineWidth: 10); Circle().trim(from: 0, to: elapsed/60).stroke(Palette.purple, style: StrokeStyle(lineWidth: 10, lineCap: .round)).rotationEffect(.degrees(-90)); VStack(spacing: 8) { Image(systemName: "wind").font(.system(size: 40)); Text("\(max(0,60-Int(elapsed)))초 남음").monospacedDigit() }.foregroundStyle(Palette.purple) }.frame(width: 210, height: 210).scaleEffect(running && inhale ? 1.05 : 1).animation(reduceMotion ? nil : .easeInOut(duration: 3), value: inhale)
                 CareButton(title: running ? "잠시 멈추기" : elapsed >= 60 ? "다시 시작" : elapsed == 0 ? "호흡 시작" : "이어하기", color: Palette.purple, id: "breathing-toggle") { if running { running = false } else { if elapsed >= 60 { elapsed = 0 }; start = ProcessInfo.processInfo.systemUptime - elapsed; running = true } }
                 Text("불편하면 언제든 멈추세요.").font(.caption).foregroundStyle(.secondary); Spacer()
-            }.padding(30).navigationTitle("1분, 나를 위한 쉼").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+            }.padding(30).navigationTitle("1분, 나를 위한 쉼").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
                 .onReceive(timer) { _ in if running { elapsed = min(60, ProcessInfo.processInfo.systemUptime-start); if elapsed >= 60 { running = false } } }
                 .onChange(of: phase) { if $0 != .active { running = false } }.onDisappear { running = false }
         }
@@ -180,7 +182,7 @@ struct BodyView: View {
                     waterCard
                     VStack(alignment: .leading, spacing: 14) { Label("오늘의 수면", systemImage: "moon").font(.headline).foregroundStyle(Palette.purple); Text(journal.latest("수면", today: true).map { number($0.value) + " 시간" } ?? "아직 기록 전").font(.title2.bold()); Text("내 목표 \(number(journal.goals.sleep))시간 · 오늘 입력한 최근 기록").font(.caption).foregroundStyle(.secondary); CareButton(title: "수면 기록하기", color: Palette.purple) { sheet = .sleep }; CareButton(title: "수면 루틴 · 취침 시간 계산", color: Palette.purple, id: "sleep-routine-open") { sheet = .sleepRoutine } }.careCard()
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("건강").navigationBarTitleDisplayMode(.inline)
+            }.background(CareAppearance.background).navigationTitle("건강").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
                 .sheet(item: $sheet) { if $0 == .exercise { RecordView(kind: "운동", initialType: exerciseType) } else { SheetContents(sheet: $0) } }
         }
     }
@@ -250,7 +252,7 @@ struct ReportView: View {
                     }
                     Text("마음과 수면은 하루 마지막 기록으로 계산해요. 기록이 없는 날은 평균에서 제외해요.").font(.caption).foregroundStyle(.secondary)
                 }.padding(22)
-            }.background(Color(.systemGroupedBackground)).navigationTitle("나의 주간 리포트").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+            }.background(CareAppearance.background).navigationTitle("나의 주간 리포트").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         }
     }
     func report(_ title: String,_ value: String,_ detail: String,_ color: Color) -> some View { VStack(alignment: .leading,spacing: 12) { Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(color); Text(value).font(.title.bold()); Text(detail).font(.caption).foregroundStyle(.secondary) }.careCard() }

@@ -64,6 +64,6 @@ final class PairQRController: UIViewController, AVCaptureMetadataOutputObjectsDe
 struct PairQRScanView: View {
     @Environment(\.dismiss) var dismiss
     let found: (String) -> Void
-    var body: some View { NavigationStack { PairQRScanner(found: found).ignoresSafeArea(edges: .bottom).navigationTitle("연결 QR 스캔").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } } } }
+    var body: some View { NavigationStack { PairQRScanner(found: found).ignoresSafeArea(edges: .bottom).navigationTitle("연결 QR 스캔").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } } } }
     }
 }
