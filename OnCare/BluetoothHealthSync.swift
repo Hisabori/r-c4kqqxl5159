@@ -3,7 +3,7 @@ import CryptoKit
 import Foundation
 
 /// One bounded, foreground BLE transaction. QR secret is never sent over the radio.
-@MainActor final class BluetoothHealthSync: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+@MainActor final class BluetoothHealthSync: NSObject, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate {
     static let service = CBUUID(string: "3ef7d480-a27d-4db0-982c-183db690b101")
     static let authID = CBUUID(string: "3ef7d480-a27d-4db0-982c-183db690b102")
     static let dataID = CBUUID(string: "3ef7d480-a27d-4db0-982c-183db690b103")

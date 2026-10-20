@@ -1,6 +1,6 @@
 name: Build research-capable unsigned IPA
 # Local research weights are added only after this source-only build is tested.
-# Expected installed version: 3.31.0, build 44. Includes validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
+# Expected installed version: 3.31.0, build 44. Includes bounded root composition, validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
 on:
   workflow_dispatch:
   push:

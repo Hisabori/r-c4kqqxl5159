@@ -127,7 +127,7 @@ struct RootView: View {
     @EnvironmentObject private var sync: LocalHealthSync
     @Environment(\.scenePhase) private var scenePhase
     private let calendarTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-    var body: some View {
+    private var navigationContent: some View {
         ZStack {
         TabView(selection: $selectedTab) {
             Dashboard().tabItem { Label("오늘", systemImage: "house") }.tag(0)
@@ -149,6 +149,9 @@ struct RootView: View {
             guard !Task.isCancelled, medicationNavigation.pending == request else { return }
             shortcutSheet = .medications; medicationNavigation.pending = nil
         }
+    }
+    var body: some View {
+        navigationContent
         .task(id: String(describing: scenePhase) + (sync.pair?.peer ?? "") + (sync.pair?.token ?? "")) {
             guard scenePhase == .active, sync.pair != nil else { return }
             while !Task.isCancelled { await sync.sync(journal); do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break } }
