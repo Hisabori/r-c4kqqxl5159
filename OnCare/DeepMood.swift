@@ -6,8 +6,14 @@ enum DeepMood {
     static let emotions = ["불안", "서운함", "외로움", "질투", "분노", "공허함", "지침", "슬픔", "그리움", "안도", "설렘", "편안함"]
     static let contexts = ["연락", "관계", "혼자 있는 시간", "일·공부", "수면", "몸 상태", "이유 모름"]
     static let energies = ["선택 안 함", "축 처짐", "중간", "들뜸·긴장"]
+    static let reflectionLabels = ["실제로 있었던 일", "머릿속에서 붙인 의미", "몸에서 느껴진 것", "정말 바랐던 것", "지키고 싶은 선", "지금 할 수 있는 작은 일"]
+    static func bounded(_ text: String) -> String {
+        var units = Array(text.utf16.prefix(100))
+        if let last = units.last, (0xD800...0xDBFF).contains(last) { units.removeLast() }
+        return String(decoding: units, as: UTF16.self)
+    }
     static func style(_ raw: String) -> String { styles.contains(raw) ? raw : styles[0] }
-    static func draft(prompt: Int, focus: String, emotions chosen: Set<String>, contexts context: Set<String>, intensity: Int?, energy: String) -> String {
+    static func draft(prompt: Int, focus: String, emotions chosen: Set<String>, contexts context: Set<String>, intensity: Int?, energy: String, reflection: [String: String] = [:]) -> String {
         let feelings = emotions.filter { chosen.contains($0) }.prefix(3)
         let situations = contexts.filter { context.contains($0) }.prefix(2)
         var lines = ["[내 마음 캡슐]"]
@@ -15,6 +21,11 @@ enum DeepMood {
         if !situations.isEmpty { lines.append("마음이 움직인 상황: " + situations.joined(separator: " · ")) }
         if let n = intensity, (0...10).contains(n) { lines.append("내가 고른 강도: \(n)/10 (0 아주 약함 · 10 아주 강함)") }
         if energies.dropFirst().contains(energy) { lines.append("지금 에너지: " + energy) }
+        let detail = reflectionLabels.compactMap { label -> String? in
+            let answer = bounded(reflection[label] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return answer.isEmpty ? nil : label + ": " + answer
+        }
+        if !detail.isEmpty { lines.append("\n[조금 더 깊이, 내 말로]\n" + detail.joined(separator: "\n")) }
         lines.append("\n" + DeepMind.template(prompt, focus: focus))
         return lines.joined(separator: "\n")
     }
@@ -29,6 +40,7 @@ struct DeepMoodComposer: View {
     @State private var intensity = 5.0
     @State private var useIntensity = false
     @State private var energy = "선택 안 함"
+    @State private var reflection: [String: String] = [:]
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -46,10 +58,11 @@ struct DeepMoodComposer: View {
             Picker("지금 에너지", selection: $energy) { ForEach(DeepMood.energies, id: \.self) { Text($0).tag($0) } }
             Text("오늘 더 들여다볼 마음").font(.headline)
             Picker("오늘 더 들여다볼 마음", selection: $focus) { ForEach(DeepMind.focuses, id: \.self) { Text($0).tag($0) } }
+            DeepReflectionFields(reflection: $reflection)
             Text("어디까지 써볼까").font(.headline)
             Picker("어디까지 써볼까", selection: $prompt) { ForEach(0..<DeepMind.prompts.count, id: \.self) { Text(DeepMind.prompts[$0]).tag($0) } }.accessibilityIdentifier("deep-mind-prompt")
             Text(DeepMind.templates[prompt]).font(.subheadline).foregroundStyle(.secondary)
-            Button { write(DeepMood.draft(prompt: prompt, focus: focus, emotions: feelings, contexts: contexts, intensity: useIntensity ? Int(intensity) : nil, energy: energy)) } label: {
+            Button { write(DeepMood.draft(prompt: prompt, focus: focus, emotions: feelings, contexts: contexts, intensity: useIntensity ? Int(intensity) : nil, energy: energy, reflection: reflection)) } label: {
                 Label("마음 캡슐 열고 일기 쓰기", systemImage: "heart.text.square.fill").font(.headline).foregroundStyle(Color.black).frame(maxWidth: .infinity).padding(.vertical, 16)
             }.buttonStyle(.borderedProminent).accessibilityIdentifier("deep-mind-write")
             Text("선택은 초안이야. 다음 화면에서 고치고 저장해야 기록돼. 강도는 네 표현이고, 건강 점수로 환산하지 않아.").font(.caption).foregroundStyle(.secondary)
@@ -65,5 +78,26 @@ struct DeepMoodComposer: View {
                 .buttonStyle(.plain).disabled(!on && selected.wrappedValue.count >= limit).accessibilityLabel(item).accessibilityValue(on ? "선택됨" : "선택 안 됨").accessibilityIdentifier("deep-mood-\(prefix)-\(item)")
             }
         }
+    }
+}
+
+struct DeepReflectionFields: View {
+    @Binding var reflection: [String: String]
+    var body: some View {
+            DisclosureGroup("조금 더 깊이 · 마음의 속사정") {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("사실과 해석을 따로 놓고, 네가 바랐던 것까지 적어봐. 빈칸은 남겨도 돼. 각 항목은 100자까지야.").font(.caption).foregroundStyle(.secondary)
+                    ForEach(Array(DeepMood.reflectionLabels.enumerated()), id: \.offset) { index, label in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(label).font(.subheadline.bold())
+                            TextField("네 말로, 짧게 적어도 돼", text: Binding(get: { reflection[label] ?? "" }, set: { reflection[label] = DeepMood.bounded($0) }), axis: .vertical)
+                                .lineLimit(2...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("deep-reflection-\(index)")
+                        }
+                    }
+                    Button("지금 쓴 속사정 비우기") { reflection = [:] }.accessibilityIdentifier("deep-reflection-clear")
+                    Text("일기 초안으로만 이어져. 다음 화면에서 저장해야 기록돼. 앱을 종료하면 저장 전 내용은 사라질 수 있어.").font(.caption).foregroundStyle(.secondary)
+                }.padding(.top, 8)
+            }
+
     }
 }

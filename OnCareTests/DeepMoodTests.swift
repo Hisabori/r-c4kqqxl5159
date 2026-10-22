@@ -24,4 +24,15 @@ final class DeepMoodTests: XCTestCase {
         XCTAssertEqual(DeepMood.style("라일락"), "라일락")
         XCTAssertEqual(DeepMood.style("malformed"), "미드나잇")
     }
+    func testReflectionIsOptionalBoundedAndNeverInventsAnswers() {
+        var answers = Dictionary(uniqueKeysWithValues: DeepMood.reflectionLabels.map { ($0, String(repeating: "💜", count: 200)) })
+        answers["injected"] = "unknown-field"
+        let note = DeepMood.draft(prompt: 3, focus: "관계", emotions: ["불안"], contexts: ["연락"], intensity: 8, energy: "중간", reflection: answers)
+        XCTAssertLessThanOrEqual(note.utf16.count, 2000)
+        XCTAssertFalse(note.contains("unknown-field")); XCTAssertFalse(note.contains("�"))
+        XCTAssertTrue(note.contains("지키고 싶은 선:"))
+        let empty = DeepMood.draft(prompt: 0, focus: "자유롭게", emotions: [], contexts: [], intensity: nil, energy: "선택 안 함", reflection: [DeepMood.reflectionLabels[0]: "   "])
+        XCTAssertFalse(empty.contains("[조금 더 깊이"))
+        XCTAssertEqual(DeepMood.bounded(String(repeating: "a", count: 99) + "💜"), String(repeating: "a", count: 99))
+    }
 }

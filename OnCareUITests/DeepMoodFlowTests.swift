@@ -13,12 +13,19 @@ final class DeepMoodFlowTests: XCTestCase {
         let context = app.buttons["deep-mood-context-연락"]
         reach(context, in: app); context.tap()
         try capture("deep-mood-330-tags")
+        let expand = app.staticTexts["조금 더 깊이 · 마음의 속사정"].firstMatch
+        reach(expand, in: app); expand.tap()
+        let detail = app.descendants(matching: .any)["deep-reflection-0"].firstMatch
+        reach(detail, in: app); detail.tap(); detail.typeText("답장이 늦었다")
+        app.buttons["deep-reflection-done"].tap()
+        try capture("deep-mood-330-reflection")
         let write = app.buttons["deep-mind-write"]
         reach(write, in: app); write.tap()
         let note = app.descendants(matching: .any)["record-note"].firstMatch
         XCTAssertTrue(note.waitForExistence(timeout: 10))
         XCTAssertTrue((note.value as? String ?? "").contains("섞인 감정: 외로움"))
         XCTAssertTrue((note.value as? String ?? "").contains("상황: 연락"))
+        XCTAssertTrue((note.value as? String ?? "").contains("실제로 있었던 일: 답장이 늦었다"))
         XCTAssertTrue(app.buttons["record-save"].exists)
         try capture("deep-mood-330-draft")
         app.buttons["닫기"].firstMatch.tap()
