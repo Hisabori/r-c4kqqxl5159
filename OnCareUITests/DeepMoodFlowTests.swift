@@ -19,6 +19,19 @@ final class DeepMoodFlowTests: XCTestCase {
         reach(detail, in: app); detail.tap(); detail.typeText("답장이 늦었다")
         app.buttons["deep-reflection-done"].tap()
         try capture("deep-mood-330-reflection")
+        let review = app.staticTexts["감정 전후 돌아보기 · 임시보관"].firstMatch
+        reach(review, in: app); review.tap()
+        let action = app.descendants(matching: .any)["deep-review-0"].firstMatch
+        reach(action, in: app); action.tap(); action.typeText("잠깐 산책했다")
+        app.buttons["deep-reflection-done"].tap()
+        let saveDraft = app.buttons["deep-draft-save"]
+        reach(saveDraft, in: app); saveDraft.tap()
+        XCTAssertTrue(app.staticTexts["deep-draft-status"].exists)
+        let restoreDraft = app.buttons["deep-draft-restore"]
+        reach(restoreDraft, in: app); restoreDraft.tap(); app.buttons["보관본 불러오기"].tap()
+        let deleteDraft = app.buttons["deep-draft-delete"]
+        reach(deleteDraft, in: app); deleteDraft.tap(); app.buttons["보관본 삭제"].tap()
+        try capture("deep-mood-330-review")
         let write = app.buttons["deep-mind-write"]
         reach(write, in: app); write.tap()
         let note = app.descendants(matching: .any)["record-note"].firstMatch
@@ -26,6 +39,7 @@ final class DeepMoodFlowTests: XCTestCase {
         XCTAssertTrue((note.value as? String ?? "").contains("섞인 감정: 외로움"))
         XCTAssertTrue((note.value as? String ?? "").contains("상황: 연락"))
         XCTAssertTrue((note.value as? String ?? "").contains("실제로 있었던 일: 답장이 늦었다"))
+        XCTAssertTrue((note.value as? String ?? "").contains("해본 행동: 잠깐 산책했다"))
         XCTAssertTrue(app.buttons["record-save"].exists)
         try capture("deep-mood-330-draft")
         app.buttons["닫기"].firstMatch.tap()

@@ -7,6 +7,17 @@ enum DeepMood {
     static let contexts = ["연락", "관계", "혼자 있는 시간", "일·공부", "수면", "몸 상태", "이유 모름"]
     static let energies = ["선택 안 함", "축 처짐", "중간", "들뜸·긴장"]
     static let reflectionLabels = ["실제로 있었던 일", "머릿속에서 붙인 의미", "몸에서 느껴진 것", "정말 바랐던 것", "지키고 싶은 선", "지금 할 수 있는 작은 일"]
+    static let reviewLabels = ["해본 행동", "도움이 된 점 · 어려웠던 점", "다음에 기억할 것"]
+    static let afterKey = "돌아본 감정 강도"
+    static func answers(_ values: [String: String]) -> [String: String] {
+        var result: [String: String] = [:]
+        for key in reflectionLabels + reviewLabels {
+            let value = bounded(values[key] ?? "")
+            if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { result[key] = value }
+        }
+        if let raw = values[afterKey], let value = Int(raw), (0...10).contains(value) { result[afterKey] = String(value) }
+        return result
+    }
     static func bounded(_ text: String) -> String {
         var units = Array(text.utf16.prefix(100))
         if let last = units.last, (0xD800...0xDBFF).contains(last) { units.removeLast() }
@@ -26,6 +37,12 @@ enum DeepMood {
             return answer.isEmpty ? nil : label + ": " + answer
         }
         if !detail.isEmpty { lines.append("\n[조금 더 깊이, 내 말로]\n" + detail.joined(separator: "\n")) }
+        let review = reviewLabels.compactMap { label -> String? in
+            let answer = bounded(reflection[label] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return answer.isEmpty ? nil : label + ": " + answer
+        }
+        if !review.isEmpty { lines.append("\n[감정 전후 돌아보기]\n" + review.joined(separator: "\n")) }
+        if let after = answers(reflection)[afterKey] { lines.append("돌아본 감정 강도: " + after + "/10 · 내가 직접 남긴 표현") }
         lines.append("\n" + DeepMind.template(prompt, focus: focus))
         return lines.joined(separator: "\n")
     }
@@ -59,6 +76,7 @@ struct DeepMoodComposer: View {
             Text("오늘 더 들여다볼 마음").font(.headline)
             Picker("오늘 더 들여다볼 마음", selection: $focus) { ForEach(DeepMind.focuses, id: \.self) { Text($0).tag($0) } }
             DeepReflectionFields(reflection: $reflection)
+            DeepReviewFields(reflection: $reflection)
             Text("어디까지 써볼까").font(.headline)
             Picker("어디까지 써볼까", selection: $prompt) { ForEach(0..<DeepMind.prompts.count, id: \.self) { Text(DeepMind.prompts[$0]).tag($0) } }.accessibilityIdentifier("deep-mind-prompt")
             Text(DeepMind.templates[prompt]).font(.subheadline).foregroundStyle(.secondary)
@@ -94,7 +112,7 @@ struct DeepReflectionFields: View {
                                 .lineLimit(2...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("deep-reflection-\(index)")
                         }
                     }
-                    Button("지금 쓴 속사정 비우기") { reflection = [:] }.accessibilityIdentifier("deep-reflection-clear")
+                    Button("지금 쓴 속사정 비우기") { for key in DeepMood.reflectionLabels { reflection.removeValue(forKey: key) } }.accessibilityIdentifier("deep-reflection-clear")
                     Text("일기 초안으로만 이어져. 다음 화면에서 저장해야 기록돼. 앱을 종료하면 저장 전 내용은 사라질 수 있어.").font(.caption).foregroundStyle(.secondary)
                 }.padding(.top, 8)
             }.toolbar {

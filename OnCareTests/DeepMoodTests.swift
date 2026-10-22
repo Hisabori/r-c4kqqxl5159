@@ -35,4 +35,23 @@ final class DeepMoodTests: XCTestCase {
         XCTAssertFalse(empty.contains("[조금 더 깊이"))
         XCTAssertEqual(DeepMood.bounded(String(repeating: "a", count: 99) + "💜"), String(repeating: "a", count: 99))
     }
+    func testReviewBoundsAndOptionalAfterIntensity() {
+        var values = Dictionary(uniqueKeysWithValues: (DeepMood.reflectionLabels + DeepMood.reviewLabels).map { ($0, String(repeating: "💜", count: 200)) })
+        values[DeepMood.afterKey] = "0"
+        let text = DeepMood.draft(prompt: 3, focus: "관계", emotions: [], contexts: [], intensity: 8, energy: "중간", reflection: values)
+        XCTAssertLessThanOrEqual(text.utf16.count, 2000); XCTAssertTrue(text.contains("돌아본 감정 강도: 0/10")); XCTAssertTrue(text.contains("[감정 전후 돌아보기]"))
+        values[DeepMood.afterKey] = "11"; XCTAssertNil(DeepMood.answers(values)[DeepMood.afterKey])
+        XCTAssertNil(DeepMood.answers(["unknown": "private"])["unknown"])
+    }
+    func testDraftSlotRoundTripFailureAndDeleteAreSeparateFromCurrentInput() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let current = [DeepMood.reviewLabels[0]: "산책", DeepMood.afterKey: "0"]
+        try DeepDraftStore.save(current, directory: directory)
+        XCTAssertEqual(try DeepDraftStore.load(directory: directory), current)
+        XCTAssertEqual(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
+        try Data("invalid".utf8).write(to: DeepDraftStore.location(directory: directory))
+        XCTAssertThrowsError(try DeepDraftStore.load(directory: directory)); XCTAssertEqual(current[DeepMood.reviewLabels[0]], "산책")
+        try DeepDraftStore.remove(directory: directory); XCTAssertThrowsError(try DeepDraftStore.load(directory: directory))
+    }
 }
