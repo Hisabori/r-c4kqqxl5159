@@ -97,7 +97,11 @@ struct DeepReflectionFields: View {
                     Button("지금 쓴 속사정 비우기") { reflection = [:] }.accessibilityIdentifier("deep-reflection-clear")
                     Text("일기 초안으로만 이어져. 다음 화면에서 저장해야 기록돼. 앱을 종료하면 저장 전 내용은 사라질 수 있어.").font(.caption).foregroundStyle(.secondary)
                 }.padding(.top, 8)
+            }.toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("입력 마침") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }.accessibilityIdentifier("deep-reflection-done")
+                }
             }
-
     }
 }
