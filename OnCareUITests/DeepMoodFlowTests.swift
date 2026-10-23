@@ -5,7 +5,7 @@ final class DeepMoodFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-app-deep-mind", "YES", "-app-start-tab", "1", "-app-deep-style", "미드나잇", "-AppleInterfaceStyle", "Light"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["멀쩡한 척,\n여기선 잠깐 꺼도 돼."].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["deep-mind-card"].waitForExistence(timeout: 20))
         try capture("deep-mood-330-room")
         let feeling = app.buttons["deep-mood-emotion-외로움"]
         reach(feeling, in: app); feeling.tap()
