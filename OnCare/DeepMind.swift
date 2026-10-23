@@ -35,16 +35,17 @@ struct DeepMindCard: View {
     @State private var support = false
     @State private var draft: DeepMood.NoteDraft?
     @AppStorage("app-deep-style") private var style = "미드나잇"
-    private var accent: Color { DeepMood.style(style) == "라일락" ? Color(red: 0.78, green: 0.69, blue: 1) : Color(red: 1, green: 0.63, blue: 0.79) }
+    private var accent: Color { DeepMood.style(style) == "라일락" ? Color(red: 0.78, green: 0.69, blue: 1) : Color(red: 1, green: 0.73, blue: 0.82) }
     private var backdrop: Color { DeepMood.style(style) == "로즈" ? Color(red: 0.22, green: 0.08, blue: 0.16) : DeepMood.style(style) == "라일락" ? Color(red: 0.13, green: 0.09, blue: 0.22) : Color(red: 0.07, green: 0.05, blue: 0.10) }
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             MedicationHomeCard { medication = true }
             VStack(alignment: .leading, spacing: 10) {
-                HStack { Text("♡  MY INNER ROOM  ♡").font(.caption.weight(.semibold)).tracking(2); Spacer(); Image(systemName: "sparkle").accessibilityHidden(true) }.foregroundStyle(accent)
-                Text("멀쩡한 척,\n여기선 잠깐 꺼도 돼.").font(.system(.largeTitle, design: .rounded).bold()).accessibilityIdentifier("deep-mind-card")
-                Text("네가 고른 말로, 네 마음을 남겨.").font(.subheadline).foregroundStyle(.secondary)
+                HStack { Text("A LITTLE ROOM FOR YOU").font(.caption.weight(.semibold)).tracking(2); Spacer(); Image(systemName: "sparkle").accessibilityHidden(true) }.foregroundStyle(accent)
+                Text("오늘의 마음을,\n천천히 펼쳐봐.").font(.system(.largeTitle, design: .rounded).bold()).accessibilityIdentifier("deep-mind-card")
+                Text("말이 되지 않는 마음도 괜찮아. 한 줄부터 남겨봐.").font(.subheadline).foregroundStyle(.secondary)
             }
+            HStack(spacing: 10) { Image(systemName: "moon.stars").accessibilityHidden(true); Text("다 쓰지 않아도, 오늘의 한 줄이면 충분해.").font(.subheadline) }.foregroundStyle(accent).padding(16).frame(maxWidth: .infinity, alignment: .leading).background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 20))
             Picker("마음의 방 테마", selection: $style) { ForEach(DeepMood.styles, id: \.self) { Text($0).tag($0) } }.pickerStyle(.segmented).accessibilityIdentifier("deep-mood-style")
             DeepMoodComposer { note in draft = DeepMood.NoteDraft(note: note) }
             Divider().overlay(accent.opacity(0.3))
@@ -56,7 +57,7 @@ struct DeepMindCard: View {
             Text("네 초안은 저장하기 전까지 기록이 아니야. 모드를 꺼도 저장한 일기는 남아. ChatGPT 개인 메모리를 자동으로 읽거나, 이 모드만으로 내용을 외부 전송하지 않아.").font(.caption).foregroundStyle(.secondary)
         }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
             .background(LinearGradient(colors: [backdrop, Color(red: 0.09, green: 0.07, blue: 0.12)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 30))
-            .overlay(RoundedRectangle(cornerRadius: 30).strokeBorder(accent.opacity(0.35), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 30).strokeBorder(accent.opacity(0.18), lineWidth: 1))
             .environment(\.colorScheme, .dark).foregroundStyle(.white).tint(accent)
             .sheet(item: $draft) { RecordView(kind: "마음", initialNote: $0.note) }
             .sheet(isPresented: $support) { CrisisSupportView() }.sheet(isPresented: $medication) { MedicationView() }

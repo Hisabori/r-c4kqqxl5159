@@ -42,7 +42,7 @@ struct DeepReviewFields: View {
                 }
                 ForEach(Array(DeepMood.reviewLabels.enumerated()), id: \.offset) { index, label in
                     Text(label).font(.subheadline.bold())
-                    TextField("네 말로 남겨봐 · 100자까지", text: Binding(get: { reflection[label] ?? "" }, set: { reflection[label] = DeepMood.bounded($0) }), axis: .vertical).lineLimit(2...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("deep-review-\(index)")
+                    TextField("네 말로 남겨봐 · 100자까지", text: Binding(get: { reflection[label] ?? "" }, set: { reflection[label] = DeepMood.bounded($0) }), axis: .vertical).lineLimit(2...4).padding(14).background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.10))).accessibilityIdentifier("deep-review-\(index)")
                 }
                 Button("속사정·돌아보기 글 임시보관") { do { try DeepDraftStore.save(reflection); status = "이 기기에 한 건 임시보관했어. 일기 저장과는 달라." } catch { status = "임시보관하지 못했어. 지금 입력은 유지돼." } }.accessibilityIdentifier("deep-draft-save")
                 Button("임시보관 이어 쓰기") { restore = true }.accessibilityIdentifier("deep-draft-restore")

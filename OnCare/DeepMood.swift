@@ -92,7 +92,7 @@ struct DeepMoodComposer: View {
                 let on = selected.wrappedValue.contains(item)
                 Button {
                     if on { selected.wrappedValue.remove(item) } else if selected.wrappedValue.count < limit { selected.wrappedValue.insert(item) }
-                } label: { HStack { Text(item); Spacer(); Image(systemName: on ? "checkmark.circle.fill" : "circle") }.font(.subheadline.weight(.medium)).padding(12).frame(minHeight: 48).background(on ? Color.pink.opacity(0.23) : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(on ? Color.pink : Color.white.opacity(0.12))) }
+                } label: { HStack { Text(item); Spacer(); Image(systemName: on ? "checkmark.circle.fill" : "circle") }.font(.subheadline.weight(.medium)).padding(12).frame(minHeight: 48).background(on ? Color.pink.opacity(0.15) : Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(on ? Color.pink.opacity(0.6) : Color.white.opacity(0.10))) }
                 .buttonStyle(.plain).disabled(!on && selected.wrappedValue.count >= limit).accessibilityLabel(item).accessibilityValue(on ? "선택됨" : "선택 안 됨").accessibilityIdentifier("deep-mood-\(prefix)-\(item)")
             }
         }
@@ -109,7 +109,7 @@ struct DeepReflectionFields: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(label).font(.subheadline.bold())
                             TextField("네 말로, 짧게 적어도 돼", text: Binding(get: { reflection[label] ?? "" }, set: { reflection[label] = DeepMood.bounded($0) }), axis: .vertical)
-                                .lineLimit(2...4).textFieldStyle(.roundedBorder).accessibilityIdentifier("deep-reflection-\(index)")
+                                .lineLimit(2...4).padding(14).background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.white.opacity(0.10))).accessibilityIdentifier("deep-reflection-\(index)")
                         }
                     }
                     Button("지금 쓴 속사정 비우기") { for key in DeepMood.reflectionLabels { reflection.removeValue(forKey: key) } }.accessibilityIdentifier("deep-reflection-clear")
