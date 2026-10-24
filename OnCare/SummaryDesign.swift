@@ -32,7 +32,9 @@ struct SummaryMetricCard: View {
     let kind: String
     var highlight = false
     let action: () -> Void
-    private var days: [SummaryDay] { SummaryMetrics.days(journal.entries, kind: kind) }
+    @AppStorage("steps-cache-token-v1") private var stepsToken = ""
+    @AppStorage("step-source-v1") private var stepSource = "apple"
+    private var days: [SummaryDay] { _ = stepsToken; _ = stepSource; return kind == "걸음" ? StepTotals.overview(journal.entries) : SummaryMetrics.days(journal.entries, kind: kind) }
     private var mean: Double? { SummaryMetrics.mean(days) }
     private var color: Color { SummaryMetrics.color(kind) }
     private var latest: Entry? { journal.latest(kind) }
@@ -42,7 +44,7 @@ struct SummaryMetricCard: View {
                 HStack {
                     Label(kind == "물" ? "수분" : kind == "걸음" ? "걸음" : kind, systemImage: kind == "걸음" ? "figure.walk" : symbol(kind)).font(.headline).foregroundStyle(color)
                     Spacer()
-                    if !highlight, let latest { Text(koreanDate(latest.date)).font(.caption).foregroundStyle(.secondary) }
+                    if !highlight, let latest, kind != "걸음" { Text(koreanDate(latest.date)).font(.caption).foregroundStyle(.secondary) }
                     Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
                 }
                 if highlight {
@@ -66,7 +68,7 @@ struct SummaryMetricCard: View {
                     if !highlight { miniChart.frame(width: 100, height: 64).accessibilityHidden(true) }
                 }
                 if highlight { largeChart.frame(height: 170) }
-                if latest == nil { Text("데이터 없음 · 기록이나 건강 연결로 시작해요").font(.caption).foregroundStyle(.secondary) }
+                if kind == "걸음" ? days.compactMap(\.value).isEmpty : latest == nil { Text("데이터 없음 · 기록이나 건강 연결로 시작해요").font(.caption).foregroundStyle(.secondary) }
                 if highlight { Text("오늘 포함 · 없는 날짜는 0으로 채우지 않아요.").font(.caption2).foregroundStyle(.secondary) }
             }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
                 .background(CareAppearance.card, in: RoundedRectangle(cornerRadius: 30))

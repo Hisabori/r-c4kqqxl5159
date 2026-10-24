@@ -69,7 +69,7 @@ struct TrendChart: View {
     }
 }
 enum CareSheet: String, Identifiable {
-    case survey, preferences, intelligence, healthConnection, sleepRoutine, practice, medications, widgetHelp, articles
+    case steps, survey, preferences, intelligence, healthConnection, sleepRoutine, practice, medications, widgetHelp, articles
     case mood = "마음", weight = "체중", exercise = "운동", sleep = "수면", water = "물", goals, routines, report, reminders, breathing
     var id: String { rawValue }
 }
@@ -77,6 +77,7 @@ struct SheetContents: View {
     let sheet: CareSheet
     var body: some View {
         switch sheet {
+        case .steps: NavigationStack { StepDashboard() }
         case .survey: HealthSurveyView()
         case .articles: ArticleLibraryView(isSheet: true)
         case .preferences: AppPreferencesView()
@@ -253,7 +254,7 @@ struct Dashboard: View {
     private var highlightsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("하이라이트").font(.title2.bold())
-            SummaryMetricCard(kind: "걸음", highlight: true) { sheet = .healthConnection }
+            SummaryMetricCard(kind: "걸음", highlight: true) { sheet = .steps }
             if showingHighlights {
                 SummaryMetricCard(kind: "운동", highlight: true) { sheet = .practice }
                 SummaryMetricCard(kind: "수면", highlight: true) { sheet = .sleepRoutine }
@@ -262,7 +263,7 @@ struct Dashboard: View {
             Button { showingHighlights.toggle() } label: { HStack { Label(showingHighlights ? "하이라이트 접기" : "모든 하이라이트 보기", systemImage: "list.bullet.clipboard"); Spacer(); Image(systemName: "chevron.right") }.padding(20).background(CareAppearance.card, in: Capsule()) }.buttonStyle(.plain).accessibilityIdentifier("summary-highlights-all")
         }
     }
-    private func summarySheet(_ kind: String) -> CareSheet { switch kind { case "걸음": return .healthConnection; case "마음": return .mood; case "수면": return .sleepRoutine; case "체중": return .weight; case "운동": return .exercise; default: return .water } }
+    private func summarySheet(_ kind: String) -> CareSheet { switch kind { case "걸음": return .steps; case "마음": return .mood; case "수면": return .sleepRoutine; case "체중": return .weight; case "운동": return .exercise; default: return .water } }
     var hero: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack { Label("나의 하루 요약", systemImage: "heart.fill").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.coral); Spacer(); Text("오늘").font(.caption).foregroundStyle(.secondary) }

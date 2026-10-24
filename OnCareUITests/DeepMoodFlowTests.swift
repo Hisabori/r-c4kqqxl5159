@@ -64,6 +64,18 @@ final class DeepMoodFlowTests: XCTestCase {
         try capture("deep-mood-330-normal-home")
         app.terminate()
     }
+    func testStepDashboardCanOpenWithoutHealthPermission() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-app-deep-mind", "NO", "-app-start-tab", "2", "-step-source-v1", "apple"]
+        app.launch()
+        let open = app.descendants(matching: .any)["steps-open"].firstMatch
+        reach(open, in: app); open.tap()
+        XCTAssertTrue(app.staticTexts["steps-today"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.steppers["steps-goal"].exists)
+        try capture("steps-dashboard")
+        app.buttons["닫기"].firstMatch.tap()
+        app.terminate()
+    }
     private func reach(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 { if element.isHittable { return }; app.swipeUp() }
         XCTAssertTrue(element.isHittable)

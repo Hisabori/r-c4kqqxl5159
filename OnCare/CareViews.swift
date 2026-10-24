@@ -174,7 +174,7 @@ struct BodyView: View {
                     Picker("기간", selection: $range) { ForEach([7,30,90], id: \.self) { Text("\($0)일").tag($0) } }.pickerStyle(.segmented)
                     NavigationLink { HealthRecordsView() } label: { Label("연결된 건강 정보 · 항목별 보기", systemImage: "heart.text.square.fill").font(.headline).frame(maxWidth: .infinity, alignment: .leading).careCard() }.buttonStyle(.plain).accessibilityIdentifier("health-records-open")
                     weightCard
-                    VStack(alignment: .leading, spacing: 12) { Label("오늘의 걸음", systemImage: "figure.walk").font(.headline).foregroundStyle(Palette.teal); Text(number(journal.sum("걸음", from: dayOffset(0))) + " 걸음").font(.title2.bold()); CareButton(title: "Android 건강 연결", id: "body-sync-open") { sheet = .healthConnection } }.careCard()
+                    NavigationLink { StepDashboard() } label: { Label("만보기 · 목표와 최근 7일", systemImage: "figure.walk").font(.headline).frame(maxWidth: .infinity, alignment: .leading).careCard() }.buttonStyle(.plain).accessibilityIdentifier("steps-open")
                     SleepInsightsView(entries: journal.entries, goal: journal.goals.sleep, now: Date())
                     SectionTitle(title: "이번 주 움직임")
                     exerciseCard
