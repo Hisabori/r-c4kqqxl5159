@@ -76,6 +76,20 @@ final class DeepMoodFlowTests: XCTestCase {
         app.buttons["닫기"].firstMatch.tap()
         app.terminate()
     }
+    func testHealthOverviewOpensEditableRecordWithoutSaving() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-app-deep-mind", "NO", "-app-start-tab", "2"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["health-overview-count"].waitForExistence(timeout: 20))
+        let focus = app.segmentedControls["health-overview-focus"]
+        XCTAssertTrue(focus.exists); focus.buttons["마음"].tap()
+        try capture("health-overview")
+        let open = app.buttons["health-overview-next"]
+        reach(open, in: app); open.tap()
+        XCTAssertTrue(app.buttons["record-save"].waitForExistence(timeout: 10))
+        app.buttons["닫기"].firstMatch.tap()
+        app.terminate()
+    }
     private func reach(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 { if element.isHittable { return }; app.swipeUp() }
         XCTAssertTrue(element.isHittable)
