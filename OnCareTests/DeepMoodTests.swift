@@ -54,4 +54,15 @@ final class DeepMoodTests: XCTestCase {
         XCTAssertThrowsError(try DeepDraftStore.load(directory: directory)); XCTAssertEqual(current[DeepMood.reviewLabels[0]], "산책")
         try DeepDraftStore.remove(directory: directory); XCTAssertThrowsError(try DeepDraftStore.load(directory: directory))
     }
+    func testShortWritingUsesValidatedFocusWithoutInjectingInput() {
+        XCTAssertTrue(DeepMind.shortTemplate("외로움").contains("오늘 살펴볼 마음: 외로움"))
+        XCTAssertFalse(DeepMind.shortTemplate("injected").contains("injected"))
+        XCTAssertTrue(DeepMind.shortTemplate("관계").utf16.count < 500)
+        XCTAssertNotEqual(DeepMind.starter("불안"), DeepMind.starter("외로움"))
+    }
+    func testRememberedTopicCannotIndexOutsideTemplates() {
+        XCTAssertEqual(DeepMind.promptIndex(Int.min), 0)
+        XCTAssertEqual(DeepMind.promptIndex(Int.max), DeepMind.prompts.count - 1)
+        for n in -5...10 { XCTAssertFalse(DeepMind.templates[DeepMind.promptIndex(n)].isEmpty) }
+    }
 }

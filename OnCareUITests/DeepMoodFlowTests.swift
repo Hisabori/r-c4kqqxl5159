@@ -90,6 +90,20 @@ final class DeepMoodFlowTests: XCTestCase {
         app.buttons["닫기"].firstMatch.tap()
         app.terminate()
     }
+    func testShortDeepWritingOpensAnEditableTemplateWithoutSaving() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-app-deep-mind", "YES", "-app-start-tab", "1", "-app-deep-focus", "외로움"]
+        app.launch()
+        let open = app.buttons["deep-short-write"]
+        reach(open, in: app); open.tap()
+        let note = app.descendants(matching: .any)["record-note"].firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 10))
+        XCTAssertTrue((note.value as? String ?? "").contains("[짧게 남긴 마음]"))
+        XCTAssertTrue((note.value as? String ?? "").contains("외로움"))
+        XCTAssertTrue(app.buttons["record-save"].exists)
+        try capture("deep-short-draft")
+        app.buttons["닫기"].firstMatch.tap(); app.terminate()
+    }
     private func reach(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 { if element.isHittable { return }; app.swipeUp() }
         XCTAssertTrue(element.isHittable)

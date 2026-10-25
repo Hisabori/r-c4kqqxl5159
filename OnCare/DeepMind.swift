@@ -6,6 +6,20 @@ enum DeepMind {
     static func template(_ index: Int, focus raw: String) -> String { let f = focus(raw); return (f == focuses[0] ? "" : "오늘 살펴볼 마음: " + f + "\n\n") + templates[min(templates.count-1,max(0,index))] }
     static func notificationTitle(mode: Bool, explicit: Bool) -> String { mode && explicit ? "시발 처먹어 ㅋㅋㅋㅋ" : mode ? "복용 시간 됐어. 일정 확인하자" : "복용 일정을 확인할 시간" }
     static func notificationBody(mode: Bool) -> String { mode ? "등록한 복용 일정이야. 이미 먹었는지 먼저 확인해. 먹었으면 추가로 먹지 마. 헷갈리면 약사에게 확인해." : "온케어에서 등록한 약과 복용 방법을 확인하세요." }
+    static func promptIndex(_ raw: Int) -> Int { min(prompts.count - 1, max(0, raw)) }
+    static func starter(_ raw: String) -> String {
+        switch focus(raw) {
+        case "불안": return "직접 확인한 일과, 아직 모르는 부분을 따로 적어볼까?"
+        case "외로움": return "어떤 순간에 누군가와 연결되고 싶었어?"
+        case "관계": return "그때 바랐던 말과 지키고 싶은 선은 뭐였어?"
+        case "무기력": return "오늘 마음이나 몸이 무거웠던 순간이 있었어?"
+        case "스트레스": return "오늘 네 에너지를 가장 많이 쓴 일은 뭐였어?"
+        default: return "지금 남기고 싶은 한 장면은 뭐야?"
+        }
+    }
+    static func shortTemplate(_ raw: String) -> String {
+        "[짧게 남긴 마음]\n" + (focus(raw) == focuses[0] ? "" : "오늘 살펴볼 마음: " + focus(raw) + "\n") + "\n지금 내 말로 표현하면:\n\n몸에서 느껴지는 것:\n\n지금 원하는 도움 또는 쉬고 싶은 것:\n"
+    }
     static let prompts = ["상황과 감정", "반복되는 생각", "상담 준비", "보내지 않을 편지"]
     static let templates = [
         "무슨 일이 있었나요?\n\n느낀 감정과 강도(내 표현으로):\n\n몸의 느낌:\n\n지금 필요한 것과 작은 행동:\n",

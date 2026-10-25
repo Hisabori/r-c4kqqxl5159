@@ -51,7 +51,8 @@ enum DeepMood {
 struct DeepMoodComposer: View {
     let write: (String) -> Void
     @AppStorage("app-deep-focus") private var focus = "자유롭게"
-    @State private var prompt = 0
+    @AppStorage("app-deep-prompt-v1") private var storedPrompt = 0
+    private var prompt: Int { DeepMind.promptIndex(storedPrompt) }
     @State private var feelings = Set<String>()
     @State private var contexts = Set<String>()
     @State private var intensity = 5.0
@@ -61,6 +62,9 @@ struct DeepMoodComposer: View {
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text(DeepMind.starter(focus)).font(.headline).padding(16).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 18)).accessibilityIdentifier("deep-focus-question")
+            Button("말이 안 나올 땐 · 짧게 기록") { write(DeepMind.shortTemplate(focus)) }.frame(minHeight: 48).accessibilityIdentifier("deep-short-write")
+            Text("선택·속사정을 넣지 않은 새 짧은 양식을 열어. 저장은 다음 화면에서 네가 결정해.").font(.caption).foregroundStyle(.secondary)
             Text("마음은 하나만 고를 필요 없어").font(.title3.bold())
             Text("지금 섞여 있는 감정, 최대 3개만 골라봐.").font(.subheadline).foregroundStyle(.secondary)
             chips(DeepMood.emotions, selected: $feelings, limit: 3, prefix: "emotion")
@@ -78,7 +82,8 @@ struct DeepMoodComposer: View {
             DeepReflectionFields(reflection: $reflection)
             DeepReviewFields(reflection: $reflection)
             Text("어디까지 써볼까").font(.headline)
-            Picker("어디까지 써볼까", selection: $prompt) { ForEach(0..<DeepMind.prompts.count, id: \.self) { Text(DeepMind.prompts[$0]).tag($0) } }.accessibilityIdentifier("deep-mind-prompt")
+            Picker("어디까지 써볼까", selection: Binding(get: { prompt }, set: { storedPrompt = DeepMind.promptIndex($0) })) { ForEach(0..<DeepMind.prompts.count, id: \.self) { Text(DeepMind.prompts[$0]).tag($0) } }.accessibilityIdentifier("deep-mind-prompt")
+            Text("선택한 기록 주제만 이 기기에 기억해. 본문을 이어 쓰려면 위의 임시보관 버튼으로 남겨둬.").font(.caption).foregroundStyle(.secondary)
             Text(DeepMind.templates[prompt]).font(.subheadline).foregroundStyle(.secondary)
             Button { write(DeepMood.draft(prompt: prompt, focus: focus, emotions: feelings, contexts: contexts, intensity: useIntensity ? Int(intensity) : nil, energy: energy, reflection: reflection)) } label: {
                 Label("마음 캡슐 열고 일기 쓰기", systemImage: "heart.text.square.fill").font(.headline).foregroundStyle(Color.black).frame(maxWidth: .infinity).padding(.vertical, 16)
