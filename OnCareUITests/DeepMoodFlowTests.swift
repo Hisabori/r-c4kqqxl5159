@@ -83,6 +83,13 @@ final class DeepMoodFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["health-overview-count"].waitForExistence(timeout: 20))
         let focus = app.segmentedControls["health-overview-focus"]
         XCTAssertTrue(focus.exists); focus.buttons["마음"].tap()
+        app.buttons["health-day-prev"].tap()
+        XCTAssertNotEqual(app.staticTexts["health-day-label"].label, "오늘")
+        XCTAssertFalse(app.buttons["health-overview-next"].exists)
+        try capture("health-day-review")
+        let today = app.buttons["health-day-today"]
+        reach(today, in: app); today.tap()
+        XCTAssertEqual(app.staticTexts["health-day-label"].label, "오늘")
         try capture("health-overview")
         let open = app.buttons["health-overview-next"]
         reach(open, in: app); open.tap()
