@@ -47,6 +47,10 @@ struct SleepSoundReviewCard: View {
             Label("측정 돌아보기", systemImage: "waveform.path").font(.headline).foregroundStyle(Palette.teal)
             if let latest = completed.first {
                 Text("최근 측정 \(Int(latest.measuredMinutes))분").font(.title3.bold())
+                if let coverage = latest.audioCoverage {
+                    Text("경과 \(Int(coverage.elapsedSeconds / 60))분 중 소리 요약 \(Int(coverage.recordedSeconds / 60))분 · \(Int(coverage.fraction * 100))%").font(.subheadline).accessibilityIdentifier("sleep-audio-coverage")
+                    Text("요약에 포함되지 않은 시간 약 \(Int(coverage.gapSeconds / 60))분. 처리 지연·중단 등이 포함될 수 있고 수면 단계나 건강 점수가 아니에요.").font(.caption).foregroundStyle(.secondary)
+                } else { Text("복구 상태·시각 정보로 전체 기록 범위를 확인할 수 없어요.").font(.caption).foregroundStyle(.secondary) }
                 if completed.count > 1 { Text("그 이전 측정 \(Int(completed[1].measuredMinutes))분 · 측정한 길이를 비교해요.").font(.subheadline) }
                 if let research = latest.research, let ratio = CareUpgrade.coverage(analyzed: research.analyzed, measuredSeconds: latest.measuredMinutes*60) {
                     Text("모델 처리 비율 \(Int(ratio*100))%").font(.headline)

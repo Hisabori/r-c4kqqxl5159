@@ -69,7 +69,7 @@ struct TrendChart: View {
     }
 }
 enum CareSheet: String, Identifiable {
-    case steps, survey, preferences, intelligence, healthConnection, sleepRoutine, practice, medications, widgetHelp, articles
+    case sleepSound, steps, survey, preferences, intelligence, healthConnection, sleepRoutine, practice, medications, widgetHelp, articles
     case mood = "마음", weight = "체중", exercise = "운동", sleep = "수면", water = "물", goals, routines, report, reminders, breathing
     var id: String { rawValue }
 }
@@ -77,6 +77,7 @@ struct SheetContents: View {
     let sheet: CareSheet
     var body: some View {
         switch sheet {
+        case .sleepSound: SleepSoundView()
         case .steps: NavigationStack { StepDashboard() }
         case .survey: HealthSurveyView()
         case .articles: ArticleLibraryView(isSheet: true)
@@ -158,7 +159,7 @@ struct RootView: View {
             while !Task.isCancelled { await sync.sync(journal); do { try await Task.sleep(nanoseconds: 60_000_000_000) } catch { break } }
         }.onReceive(calendarTimer) { _ in journal.refreshCalendar() }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in journal.refreshCalendar(force: true) }
-            .onChange(of: scenePhase) { if $0 == .active { journal.refreshCalendar(force: true) } else { sync.pauseBluetooth() } }
+            .onChange(of: scenePhase) { if $0 == .active { journal.refreshCalendar(force: true); ProgressLiveStatus.shared.recover(soundRunning: SleepSoundStore.shared.running) } else { sync.pauseBluetooth() } }
             .task(id: CareShortcutTaskKey(request: shortcuts.pending?.id, active: scenePhase == .active, windowReady: windowReady, windowGeneration: windowReference.generation)) {
                 guard scenePhase == .active, windowReady, let request = shortcuts.pending, let window = windowReference.window else { print("OnCare link deferred: active=\(scenePhase == .active), ready=\(windowReady), window=\(windowReference.window != nil), pending=\(shortcuts.pending != nil)"); return }
                 // Dismiss the current form without saving it. Recreate only tab view state so its local modal bindings cannot reopen.

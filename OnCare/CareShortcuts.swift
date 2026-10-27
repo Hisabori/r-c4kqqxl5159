@@ -7,6 +7,8 @@ import UserNotifications
 extension CareDestination {
     var sheet: CareSheet {
         switch self {
+        case .steps: return .steps
+        case .sleepSound: return .sleepSound
         case .sleep: return .sleepRoutine
         case .workout: return .practice
         case .mood: return .mood

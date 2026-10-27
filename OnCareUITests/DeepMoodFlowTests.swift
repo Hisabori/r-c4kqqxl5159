@@ -111,6 +111,19 @@ final class DeepMoodFlowTests: XCTestCase {
         try capture("deep-short-draft")
         app.buttons["닫기"].firstMatch.tap(); app.terminate()
     }
+    func testProgressDestinationsOpenWithoutStartingMicrophoneOrLiveActivity() throws {
+        let app = XCUIApplication(); app.launchArguments += ["-sound-live-v1", "NO", "-steps-live-v1", "NO"]; app.launch()
+        XCUIDevice.shared.system.open(URL(string: "oncare://open/sleep-sound")!)
+        XCTAssertTrue(app.buttons["sleep-sound-start"].waitForExistence(timeout: 15))
+        XCTAssertEqual(app.switches["sleep-live-toggle"].value as? String, "0")
+        try capture("sleep-sound-progress")
+        app.buttons["닫기"].firstMatch.tap()
+        XCUIDevice.shared.system.open(URL(string: "oncare://open/steps")!)
+        XCTAssertTrue(app.staticTexts["steps-today"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.switches["steps-live-toggle"].exists)
+        try capture("steps-progress")
+        app.buttons["닫기"].firstMatch.tap(); app.terminate()
+    }
     private func reach(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 { if element.isHittable { return }; app.swipeUp() }
         XCTAssertTrue(element.isHittable)

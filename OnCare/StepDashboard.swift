@@ -15,6 +15,11 @@ enum StepTotals {
         for row in rows where allowed.contains(row.day) && (0...1_000_000).contains(row.count) { result[row.day] = row }
         return result.values.sorted { $0.day < $1.day }
     }
+    static func difference(_ rows: [StepTotal], now: Date = Date()) -> Int? {
+        let values = valid(rows, now: now)
+        guard let today = values.first(where: { $0.day == dateKey(now) })?.count, let yesterday = values.first(where: { $0.day == dateKey(dayOffset(-1, from: now)) })?.count else { return nil }
+        return today - yesterday
+    }
     static func merge(_ old: [StepTotal], _ fresh: [StepTotal], now: Date = Date()) -> [StepTotal] { valid(valid(old, now: now) + valid(fresh, now: now), now: now) }
     static func overview(_ entries: [Entry], now: Date = Date()) -> [SummaryDay] {
         let source = UserDefaults.standard.string(forKey: "step-source-v1") ?? "apple"
@@ -88,6 +93,8 @@ struct StepDashboard: View {
     @StateObject private var health = StepHealthStore()
     @AppStorage("step-goal-v1") private var goal = 8_000
     @AppStorage("step-source-v1") private var source = "apple"
+    @AppStorage("steps-live-v1") private var liveEnabled = false
+    @StateObject private var live = ProgressLiveStatus.shared
     @State private var deleting = false
     private var sources: [String] { Array(Set(journal.entries.filter { $0.kind == "걸음" && $0.source?.hasPrefix("health-connect:") == true }.compactMap(\.source))).sorted() }
     private var rows: [StepTotal] { source == "apple" ? StepTotals.valid(health.rows) : StepTotals.linked(journal.entries, source: source) }
@@ -105,14 +112,22 @@ struct StepDashboard: View {
         }.background(CareAppearance.background).navigationTitle("만보기").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface())
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { dismiss() } } }
             .onDisappear { health.cancel() }.onChange(of: phase) { if $0 == .background { health.cancel() } }
-            .onAppear { if source != "apple" && !sources.contains(source) { source = "apple" } }
+            .onAppear { if source != "apple" && !sources.contains(source) { source = "apple" }; syncLive() }
+            .onChange(of: today) { _ in syncLive() }.onChange(of: goal) { _ in syncLive() }.onChange(of: source) { _ in syncLive() }.onChange(of: liveEnabled) { _ in syncLive() }
             .confirmationDialog("Apple 걸음 보관값을 지울까요?", isPresented: $deleting) { Button("보관값 지우기", role: .destructive) { health.clear() } } message: { Text("목표·일기·Apple 건강 원본·Android 연결 기록은 유지됩니다.") }
+    }
+    private func syncLive() {
+        guard #available(iOS 16.2, *) else { return }
+        live.sync(kind: .steps, sessionID: dateKey(Date()), value: today, goal: StepTotals.goal(goal), beganAt: Calendar.current.startOfDay(for: Date()), enabled: liveEnabled)
     }
     private var todayCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("오늘의 작은 발걸음", systemImage: "figure.walk").font(.headline).foregroundStyle(.orange)
             Text(today.map { $0.formatted() } ?? "—").font(.system(size: 48, weight: .bold, design: .rounded)).monospacedDigit().accessibilityIdentifier("steps-today")
             Text(today.map { $0 >= StepTotals.goal(goal) ? "오늘 정한 목표에 닿았어요. 편안하게 쉬어가도 좋아요." : "목표까지 \(max(0, StepTotals.goal(goal) - $0).formatted())걸음 남았어요." } ?? "오늘 데이터가 아직 없어요. 0걸음으로 추정하지 않아요.").font(.subheadline)
+            if let difference = StepTotals.difference(rows) {
+                Text("오늘 현재까지 − 어제 하루: " + (difference > 0 ? "+" : "") + difference.formatted() + "걸음").font(.subheadline).accessibilityIdentifier("steps-comparison")
+            } else { Text("어제와 오늘 기록이 모두 있을 때 비교해요.").font(.caption).foregroundStyle(.secondary) }
             ProgressView(value: min(1, Double(today ?? 0) / Double(StepTotals.goal(goal)))).tint(.orange)
             Text("내 목표 \(StepTotals.goal(goal).formatted())걸음 · 현재까지 읽은 집계").font(.caption).foregroundStyle(.secondary)
         }.careCard()
@@ -123,6 +138,9 @@ struct StepDashboard: View {
             Stepper("\(StepTotals.goal(goal).formatted())걸음", value: Binding(get: { StepTotals.goal(goal) }, set: { goal = $0 }), in: 1_000...30_000, step: 500).accessibilityIdentifier("steps-goal")
             Text("개인 목표예요. 만보를 꼭 채울 필요는 없어요.").font(.caption).foregroundStyle(.secondary)
             Picker("표시할 출처", selection: $source) { Text("Apple 건강 일별 집계").tag("apple"); ForEach(sources, id: \.self) { Text("Android 연결 · " + String($0.suffix(6))).tag($0) } }
+            Toggle("걸음·목표를 잠금 화면에 표시", isOn: $liveEnabled).accessibilityIdentifier("steps-live-toggle")
+            Text(live.stepsMessage).font(.caption).foregroundStyle(.secondary)
+            Text("켜면 걸음 수와 목표가 잠금 화면·다이내믹 아일랜드에 보일 수 있어요. 앱 보관값이며 새로고침은 앱에서 해주세요.").font(.caption).foregroundStyle(.secondary)
             Text("선택한 출처만 표시해요. iPhone·Android 집계를 서로 더하지 않아요.").font(.caption).foregroundStyle(.secondary)
         }.careCard()
     }

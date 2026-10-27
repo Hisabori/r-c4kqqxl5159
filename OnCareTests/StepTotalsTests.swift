@@ -24,4 +24,9 @@ final class StepTotalsTests: XCTestCase {
         XCTAssertEqual(StepTotals.linked([a,b,c], source: "health-connect:two", now: now).first?.count, 1500)
         XCTAssertEqual(StepTotals.linked([c,b,a], source: "health-connect:one", now: now).first?.count, 1200)
     }
+    func testDayComparisonNeedsBothDaysAndKeepsExplicitZero() {
+        let now = Date(), today = dateKey(now), yesterday = dateKey(dayOffset(-1))
+        XCTAssertNil(StepTotals.difference([StepTotal(day: today, count: 100)], now: now))
+        XCTAssertEqual(StepTotals.difference([StepTotal(day: today, count: 0), StepTotal(day: yesterday, count: 200)], now: now), -200)
+    }
 }

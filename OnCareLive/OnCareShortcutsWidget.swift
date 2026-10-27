@@ -12,6 +12,7 @@ import WidgetKit
         CareArticlesShortcutWidget()
         OnCareLive()
         CareWorkoutLive()
+        CareProgressLive()
     }
 }
 

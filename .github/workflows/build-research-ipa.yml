@@ -1,7 +1,7 @@
 name: Build research-capable unsigned IPA
 # Local research weights are added only after this source-only build is tested.
 # Diary styling preview uses a stable title identifier.
-# Expected installed version: 3.38.0, build 51. Includes review and explicit local draft storage, keyboard dismissal, bounded deep reflection and editable draft tests, bounded root composition, validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
+# Expected installed version: 3.39.0, build 52. Includes review and explicit local draft storage, keyboard dismissal, bounded deep reflection and editable draft tests, bounded root composition, validated LAN-or-BLE pairing, global deep theme, cross-tab previews, normal-theme restoration and authenticated BLE sync regression tests.
 on:
   workflow_dispatch:
   push:
@@ -56,10 +56,12 @@ jobs:
           cp "$PREVIEW_DIR"/health-overview.png design-previews/
           cp "$PREVIEW_DIR"/health-day-review.png design-previews/
           cp "$PREVIEW_DIR"/deep-short-draft.png design-previews/
+          cp "$PREVIEW_DIR"/sleep-sound-progress.png design-previews/
+          cp "$PREVIEW_DIR"/steps-progress.png design-previews/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: OnCare-v3.38-design-previews
+          name: OnCare-v3.39-design-previews
           path: design-previews/*.png
           if-no-files-found: error
           retention-days: 1
@@ -68,18 +70,18 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/OnCare.app package/Payload/
           cd package
-          zip -qry ../OnCare-v3.38-source-only-unsigned.ipa Payload
+          zip -qry ../OnCare-v3.39-source-only-unsigned.ipa Payload
           cd ..
-          python3 ci/verify_ipa.py OnCare-v3.38-source-only-unsigned.ipa
+          python3 ci/verify_ipa.py OnCare-v3.39-source-only-unsigned.ipa
       - uses: actions/upload-artifact@v4
         with:
-          name: OnCare-v3.38-source-only-unsigned-ipa
-          path: OnCare-v3.38-source-only-unsigned.ipa
+          name: OnCare-v3.39-source-only-unsigned-ipa
+          path: OnCare-v3.39-source-only-unsigned.ipa
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: OnCare-v3.38-research-build-logs
+          name: OnCare-v3.39-research-build-logs
           path: ios-research-*.log
           retention-days: 7

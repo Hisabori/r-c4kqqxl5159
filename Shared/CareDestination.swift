@@ -2,10 +2,13 @@ import Foundation
 
 /// Fixed navigation destinations shared by the app and its widgets. No personal data goes in a URL.
 enum CareDestination: String, CaseIterable, Identifiable, Equatable {
+    case steps = "steps", sleepSound = "sleep-sound"
     case sleep = "sleep", workout = "workout", mood = "mood", connect = "connect", medication = "medication", articles = "articles", intelligence = "intelligence"
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .steps: return "만보기"
+        case .sleepSound: return "수면 소리"
         case .sleep: return "수면 루틴"
         case .workout: return "운동 타이머"
         case .mood: return "마음 기록"
@@ -17,6 +20,8 @@ enum CareDestination: String, CaseIterable, Identifiable, Equatable {
     }
     var symbol: String {
         switch self {
+        case .steps: return "figure.walk"
+        case .sleepSound: return "waveform"
         case .sleep: return "moon.zzz.fill"
         case .workout: return "figure.walk"
         case .mood: return "heart.text.square.fill"

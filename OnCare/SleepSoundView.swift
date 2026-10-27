@@ -58,6 +58,11 @@ struct SleepSoundSession: Codable, Identifiable {
             for index in sessions.indices where sessions[index].ended == nil { sessions[index].ended = sessions[index].started.addingTimeInterval(sessions[index].bins.reduce(0) { $0 + $1.seconds }); sessions[index].reason = "앱 종료·중단 후 복구된 요약" }
         }
     }
+    func refreshLive() {
+        guard #available(iOS 16.2, *) else { return }
+        let session = sessions.first
+        ProgressLiveStatus.shared.sync(kind: .sleepSound, sessionID: session?.id ?? "none", value: session.map { Int($0.measuredMinutes) }, beganAt: session?.started ?? Date(), enabled: running && UserDefaults.standard.bool(forKey: "sound-live-v1"))
+    }
     func start(threshold: Double, research: Bool = false) {
         guard !running, !starting, [-45.0,-35.0,-25.0].contains(threshold) else { return }
         guard !research || SleepResearch.available else { message = "연구 모델이 포함되지 않은 빌드예요."; return }
@@ -84,7 +89,7 @@ struct SleepSoundSession: Codable, Identifiable {
                 if let bin = collector.add(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)), rate: buffer.format.sampleRate) { Task { @MainActor in self.receive(bin, id: session.id) } }
             }
             self.engine = engine; accumulator = collector
-            try engine.start(); sessions.insert(session, at: 0); sessions = Array(sessions.prefix(7)); running = true; message = "측정 중 · 첫 요약은 약 1분 뒤 표시돼요."; save()
+            try engine.start(); sessions.insert(session, at: 0); sessions = Array(sessions.prefix(7)); running = true; message = "측정 중 · 첫 요약은 약 1분 뒤 표시돼요."; save(); refreshLive()
             for name in [AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification, .AVAudioEngineConfigurationChange] {
                 observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in Task { @MainActor in if self.running { self.stop(reason: "마이크 경로 변경·통화 등으로 중단") } } })
             }
@@ -92,7 +97,7 @@ struct SleepSoundSession: Codable, Identifiable {
     }
     private func receive(_ bin: SleepSoundBin, id: String) {
         guard running, !sessions.isEmpty, sessions[0].id == id, sessions[0].bins.count < 480 else { return }
-        sessions[0].bins.append(bin); sessions[0].research = researchAnalyzer?.snapshot(); save()
+        sessions[0].bins.append(bin); sessions[0].research = researchAnalyzer?.snapshot(); save(); refreshLive()
         if sessions[0].bins.count >= 480 { stop(reason: "최대 8시간 측정 완료") }
     }
     func stop(reason: String = "직접 종료") {
@@ -104,7 +109,7 @@ struct SleepSoundSession: Codable, Identifiable {
         if let bin = accumulator?.finish(), sessions[0].bins.count < 480 { sessions[0].bins.append(bin) }
         accumulator = nil; sessions[0].ended = Date(); sessions[0].reason = reason
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        message = reason; save()
+        message = reason; save(); refreshLive()
     }
     func deleteHistory() { guard !running, !starting else { return }; do { if FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }; sessions = []; message = "소리 요약을 삭제했어요." } catch { message = "삭제하지 못했어요." } }
     private func save() {
@@ -118,6 +123,8 @@ struct SleepSoundView: View {
     @State private var threshold = -35.0
     @State private var deleting = false
     @State private var research = false
+    @AppStorage("sound-live-v1") private var liveEnabled = false
+    @StateObject private var live = ProgressLiveStatus.shared
     var body: some View {
         NavigationStack { ScrollView { VStack(alignment: .leading, spacing: 18) {
             Text("밤사이 소리, 기기 안에서").font(.title2.bold())
@@ -131,6 +138,9 @@ struct SleepSoundView: View {
             }.careCard()
             if store.running || store.starting { Button("측정 종료") { store.stop() }.buttonStyle(.borderedProminent) }
             else { Button("마이크 소리 측정 시작") { store.start(threshold: threshold, research: research) }.buttonStyle(.borderedProminent).accessibilityIdentifier("sleep-sound-start") }
+            Toggle("수면 소리 측정 상태를 잠금 화면에 표시", isOn: $liveEnabled).accessibilityIdentifier("sleep-live-toggle")
+            Text(live.soundMessage).font(.caption).foregroundStyle(.secondary)
+            Text("켜면 측정 경과와 분 단위 소리 요약 길이가 보일 수 있어요. 수면 단계·연구 후보 수는 잠금 화면에 표시하지 않아요.").font(.caption).foregroundStyle(.secondary)
             Text(store.message).font(.subheadline).foregroundStyle(.secondary)
             SleepSoundReviewCard(sessions: store.sessions)
             ForEach(store.sessions) { session in VStack(alignment: .leading, spacing: 10) {
@@ -145,6 +155,6 @@ struct SleepSoundView: View {
             }.careCard() }
             Text("최근 7회, 회당 최대 8시간을 보관해요. 통화·마이크 경로 변경·앱 강제 종료로 중단될 수 있으며 자동 재시작하지 않습니다. 앱 삭제 시 요약도 삭제됩니다.").font(.caption).foregroundStyle(.secondary)
             Button("소리 요약 전체 삭제", role: .destructive) { deleting = true }.disabled(store.running || store.starting)
-        }.padding(22) }.background(CareAppearance.background).navigationTitle("수면 소리 기록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.confirmationDialog("소리 요약을 모두 삭제할까요?", isPresented: $deleting) { Button("삭제", role: .destructive) { store.deleteHistory() } } }
+        }.padding(22) }.background(CareAppearance.background).onAppear { store.refreshLive() }.onChange(of: liveEnabled) { _ in store.refreshLive() }.navigationTitle("수면 소리 기록").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }.confirmationDialog("소리 요약을 모두 삭제할까요?", isPresented: $deleting) { Button("삭제", role: .destructive) { store.deleteHistory() } } }
     }
 }
