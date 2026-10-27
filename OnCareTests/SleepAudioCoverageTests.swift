@@ -17,4 +17,10 @@ final class SleepAudioCoverageTests: XCTestCase {
         XCTAssertNil(SleepAudioCoverage.analyze(start: start, end: start.addingTimeInterval(60), seconds: [.nan], recovered: false))
         XCTAssertNil(SleepAudioCoverage.analyze(start: start, end: start.addingTimeInterval(36000), seconds: [], recovered: false))
     }
+    func testContinuousElapsedTakesPriorityOverChangedWallClock() {
+        let result = SleepAudioCoverage.analyze(start: start, end: start.addingTimeInterval(-100), seconds: [60], recovered: false, monotonic: 120)!
+        XCTAssertTrue(result.usedMonotonic)
+        XCTAssertEqual(result.elapsedSeconds, 120); XCTAssertEqual(result.fraction, 0.5)
+        XCTAssertNil(SleepAudioCoverage.analyze(start: start, end: start.addingTimeInterval(120), seconds: [60], recovered: false, monotonic: .nan))
+    }
 }

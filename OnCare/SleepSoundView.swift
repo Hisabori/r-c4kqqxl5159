@@ -34,6 +34,7 @@ struct SleepSoundSession: Codable, Identifiable {
     var threshold = -35.0
     var bins: [SleepSoundBin] = []
     var research: SleepResearchSummary? = nil
+    var elapsedSeconds: Double? = nil
     var measuredMinutes: Double { bins.reduce(0) { $0 + $1.seconds } / 60 }
     var loudMinutes: Double { bins.filter { $0.rmsDBFS >= threshold }.reduce(0) { $0 + $1.seconds } / 60 }
 }
@@ -43,6 +44,7 @@ struct SleepSoundSession: Codable, Identifiable {
     @Published private(set) var running = false
     @Published private(set) var starting = false
     @Published private(set) var message = ""
+    private var measurementClock: ContinuousClock.Instant?
     private var engine: AVAudioEngine?
     private var accumulator: SleepSoundAccumulator?
     private var researchAnalyzer: SleepResearch?
@@ -61,7 +63,9 @@ struct SleepSoundSession: Codable, Identifiable {
     func refreshLive() {
         guard #available(iOS 16.2, *) else { return }
         let session = sessions.first
-        ProgressLiveStatus.shared.sync(kind: .sleepSound, sessionID: session?.id ?? "none", value: session.map { Int($0.measuredMinutes) }, beganAt: session?.started ?? Date(), enabled: running && UserDefaults.standard.bool(forKey: "sound-live-v1"))
+        var began = session?.started ?? Date()
+        if let measurementClock { let d = measurementClock.duration(to: ContinuousClock().now).components; began = Date().addingTimeInterval(-(Double(d.seconds) + Double(d.attoseconds)/1e18)) }
+        ProgressLiveStatus.shared.sync(kind: .sleepSound, sessionID: session?.id ?? "none", value: session.map { Int($0.measuredMinutes) }, beganAt: began, enabled: running && UserDefaults.standard.bool(forKey: "sound-live-v1"))
     }
     func start(threshold: Double, research: Bool = false) {
         guard !running, !starting, [-45.0,-35.0,-25.0].contains(threshold) else { return }
@@ -89,11 +93,12 @@ struct SleepSoundSession: Codable, Identifiable {
                 if let bin = collector.add(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)), rate: buffer.format.sampleRate) { Task { @MainActor in self.receive(bin, id: session.id) } }
             }
             self.engine = engine; accumulator = collector
+            measurementClock = ContinuousClock().now
             try engine.start(); sessions.insert(session, at: 0); sessions = Array(sessions.prefix(7)); running = true; message = "측정 중 · 첫 요약은 약 1분 뒤 표시돼요."; save(); refreshLive()
             for name in [AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification, .AVAudioEngineConfigurationChange] {
                 observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in Task { @MainActor in if self.running { self.stop(reason: "마이크 경로 변경·통화 등으로 중단") } } })
             }
-        } catch { engine?.inputNode.removeTap(onBus: 0); engine?.stop(); engine = nil; accumulator = nil; _ = researchAnalyzer?.close(); researchAnalyzer = nil; try? AVAudioSession.sharedInstance().setActive(false); message = "마이크 또는 연구 모델을 시작하지 못했어요. 권한·모델 포함 여부를 확인해주세요." }
+        } catch { engine?.inputNode.removeTap(onBus: 0); engine?.stop(); engine = nil; measurementClock = nil; accumulator = nil; _ = researchAnalyzer?.close(); researchAnalyzer = nil; try? AVAudioSession.sharedInstance().setActive(false); message = "마이크 또는 연구 모델을 시작하지 못했어요. 권한·모델 포함 여부를 확인해주세요." }
     }
     private func receive(_ bin: SleepSoundBin, id: String) {
         guard running, !sessions.isEmpty, sessions[0].id == id, sessions[0].bins.count < 480 else { return }
@@ -103,11 +108,14 @@ struct SleepSoundSession: Codable, Identifiable {
     func stop(reason: String = "직접 종료") {
         starting = false
         guard running else { return }; running = false
+        let endedClock = ContinuousClock().now, endedWall = Date()
         observers.forEach { NotificationCenter.default.removeObserver($0) }; observers.removeAll()
         engine?.inputNode.removeTap(onBus: 0); engine?.stop(); engine = nil
         sessions[0].research = researchAnalyzer?.close(); researchAnalyzer = nil
         if let bin = accumulator?.finish(), sessions[0].bins.count < 480 { sessions[0].bins.append(bin) }
-        accumulator = nil; sessions[0].ended = Date(); sessions[0].reason = reason
+        accumulator = nil
+        if let measurementClock { let duration = measurementClock.duration(to: endedClock).components; sessions[0].elapsedSeconds = Double(duration.seconds) + Double(duration.attoseconds)/1e18 }
+        measurementClock = nil; sessions[0].ended = endedWall; sessions[0].reason = reason
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         message = reason; save(); refreshLive()
     }
