@@ -1,0 +1,29 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'app.oncare.personal'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'app.oncare.personal.v3'
+        minSdk 26
+        targetSdk 34
+        versionCode 50
+        versionName '3.40.0'
+        testInstrumentationRunner 'app.oncare.personal.BackupChecks'
+    }
+    signingConfigs {
+        debug {
+            storeFile rootProject.file('../signing-store/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    testOptions { unitTests.includeAndroidResources = true; unitTests.all { systemProperty "robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2"; if (project.hasProperty("oncareRobolectricSdkDir")) { systemProperty "robolectric.offline", "true"; systemProperty "robolectric.dependency.dir", project.property("oncareRobolectricSdkDir") } } }
+    sourceSets { test.java.srcDir "src/androidTest/java" }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies { implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'; implementation 'com.google.mlkit:text-recognition-korean:16.0.1'; implementation 'com.google.zxing:core:3.5.4'; testImplementation 'junit:junit:4.13.2'; testImplementation 'org.robolectric:robolectric:4.16.1' }

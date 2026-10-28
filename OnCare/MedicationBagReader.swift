@@ -7,6 +7,18 @@ enum MedicationBagText {
     static func lines(_ text: String) -> [String] {
         Array(text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.prefix(100)).map { String($0.prefix(500)) }
     }
+    static func candidates(_ text: String, instructions: Bool) -> [String] {
+        var seen = Set<String>()
+        return lines(text).filter { line in
+            let value = line.precomposedStringWithCompatibilityMapping.lowercased()
+            let privateTerms = ["환자", "성명", "생년", "주민", "전화", "주소", "면허", "사업자", "처방전번호"]
+            guard !privateTerms.contains(where: value.contains), !value.contains("@"), value.range(of: #"\d{2,4}[- ]\d{3,4}[- ]\d{4}"#, options: .regularExpression) == nil else { return false }
+            let method = ["식전", "식후", "식사", "취침", "복용", "하루", "매일", "아침", "점심", "저녁", "1일", "회분"]
+            let isMethod = method.contains(where: value.contains)
+            let isDrug = value.range(of: #"[가-힣a-z][가-힣a-z0-9 .·()-]*(정|캡슐|시럽|산|액|mg|mcg|밀리그램)(\s|\d|$)"#, options: .regularExpression) != nil
+            return (instructions ? isMethod : isDrug && !isMethod) && seen.insert(value).inserted
+        }
+    }
     static func recognize(_ data: Data) throws -> String {
         guard data.count <= 20 * 1024 * 1024, let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 2048, kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) else { throw CareError.invalid }
@@ -36,6 +48,10 @@ struct MedicationBagReader: View {
                 if busy { ProgressView("글자를 읽고 있어요") }; if !message.isEmpty { Text(message).foregroundStyle(Palette.coral) }
             }
             Section("입력 전 확인") { TextField("약 이름 · 선택한 줄을 수정하세요", text: $name).accessibilityIdentifier("ocr-name-preview"); Text("\(name.count) / 80자").font(.caption).foregroundStyle(name.count > 80 ? Palette.coral : .secondary); TextField("복용 방법 · 선택한 줄을 수정하세요", text: $instructions, axis: .vertical).accessibilityIdentifier("ocr-instructions-preview"); Text("\(instructions.count) / 200자").font(.caption).foregroundStyle(instructions.count > 200 ? Palette.coral : .secondary); if name.count > 80 || instructions.count > 200 { Text("긴 문장은 자동으로 잘라 넣지 않아요. 필요한 내용을 직접 줄여주세요.").font(.caption).foregroundStyle(Palette.coral) }; Button("확인한 내용으로 입력 화면에 적용") { if !name.isEmpty { apply(name, true) }; if !instructions.isEmpty { apply(instructions, false) }; dismiss() }.disabled((name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) || name.count > 80 || instructions.count > 200).accessibilityIdentifier("medication-ocr-apply") }
+            if !lines.isEmpty {
+                Section("약 이름 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: false), id: \.self) { line in Button(line) { name = line } } }
+                Section("복용 안내 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: true), id: \.self) { line in Button(line) { instructions = line } } }
+            }
             Section("인식한 줄 · 직접 선택") { TextField("인식한 글자 검색", text: $query).accessibilityIdentifier("ocr-line-search"); Text("\(filtered.count) / \(lines.count)개 줄").font(.caption).foregroundStyle(.secondary); ForEach(Array(filtered.enumerated()), id: \.offset) { _, line in
                 VStack(alignment: .leading, spacing: 10) { Text(line).textSelection(.enabled)
                     HStack { Button("약 이름에 사용") { name = line }; Spacer(); Button("복용 방법에 사용") { instructions = line } }.font(.caption)
@@ -44,7 +60,7 @@ struct MedicationBagReader: View {
             Section { Text("인식 오류가 있을 수 있어요. 용량·시간·요일은 자동으로 정하지 않으며 알림은 꺼진 상태로 돌아갑니다. 원본을 확인한 뒤 일정을 직접 저장하세요.").font(.caption).foregroundStyle(.secondary) }
         }.navigationTitle("약봉지 글자 인식").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } } }
         .task(id: photo) {
-            guard let selected = photo else { return }; busy = true; lines = []; message = ""; query = ""
+            guard let selected = photo else { return }; busy = true; lines = []; name = ""; instructions = ""; message = ""; query = ""
             do { guard let data = try await selected.loadTransferable(type: Data.self) else { throw CareError.invalid }
                 let text = try await Task.detached(priority: .userInitiated) { try MedicationBagText.recognize(data) }.value
                 guard !Task.isCancelled else { return }; lines = MedicationBagText.lines(text); if lines.isEmpty { message = "읽을 수 있는 글자가 없어요. 선명한 사진을 다시 선택해주세요." }

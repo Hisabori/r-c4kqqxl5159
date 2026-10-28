@@ -13,7 +13,12 @@ struct MedicationView: View {
     @State private var showBackup = false
     @Environment(\.scenePhase) private var phase
     private let clock = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-    private var today: [MedicationPlan] { MedicationInsights.today(store.state, now: now) }
+    private var today: [MedicationPlan] { MedicationInsights.today(store.state, now: now).sorted {
+        let a = store.checked($0.id, now: now), b = store.checked($1.id, now: now)
+        if a != b { return !a }
+        let x = $0.hour * 60 + $0.minute, y = $1.hour * 60 + $1.minute
+        return x == y ? $0.id < $1.id : x < y
+    } }
     var body: some View {
         NavigationStack {
             ScrollView {

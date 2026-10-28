@@ -1,0 +1,40 @@
+name: Build medication update Android
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build-medication-apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Build source-only APK and verify
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle assembleRelease lintRelease testDebugUnitTest --no-daemon --tests app.oncare.personal.MedicationBagTextTest --tests app.oncare.personal.SleepAudioCoverageTest --tests app.oncare.personal.HealthOverviewTest --tests app.oncare.personal.StepTotalsTest --tests app.oncare.personal.ResearchMelTest --tests app.oncare.personal.SleepSoundTest --tests app.oncare.personal.CareUpgradeTest --tests app.oncare.personal.PersonalCareFlowTest --tests app.oncare.personal.ArticleUXTest --tests app.oncare.personal.ArticleHistoryTest --tests app.oncare.personal.HealthFitnessLinksTest --tests app.oncare.personal.DeepMindTest --tests app.oncare.personal.DeepMoodTest --tests app.oncare.personal.GlobalModeAndBleTest --tests app.oncare.personal.MedicationAgendaTest --tests app.oncare.personal.MedicationSearchFlowTest | tee ../android-medication-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: OnCare-v3.40-android-source-only
+          path: |
+            android/app/build/outputs/apk/release/*unsigned.apk
+            android/app/build/test-results/testDebugUnitTest/*.xml
+            android-medication-build.log
+          if-no-files-found: error
+          retention-days: 7
