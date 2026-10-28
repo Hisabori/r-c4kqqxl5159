@@ -1,3 +1,4 @@
+# Expected-version test follows 3.40 build 53
 name: Build research-capable unsigned IPA
 # Medication candidate review and pending-first agenda update.
 # Local research weights are added only after this source-only build is tested.

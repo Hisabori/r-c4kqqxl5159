@@ -1,0 +1,9 @@
+package app.oncare.personal;
+import org.junit.Test;import org.junit.runner.RunWith;import org.robolectric.RobolectricTestRunner;import org.robolectric.annotation.Config;import java.util.*;import static org.junit.Assert.*;
+@RunWith(RobolectricTestRunner.class) @Config(sdk=26)
+public class MedicationAgendaTest {
+    private MedicationStore.Plan plan(String id,int hour){MedicationStore.Plan p=new MedicationStore.Plan();p.id=id;p.name=id;p.hour=hour;return p;}
+    @Test public void searchAcrossFieldsCaseAndWhitespace(){MedicationStore.Plan p=plan("Vitamin Café",9);p.instructions="아침 식후";assertTrue(MedicationAgenda.matches(p," cafe  아침 "));assertTrue(MedicationAgenda.matches(p," \n"));assertFalse(MedicationAgenda.matches(p,"아침 저녁"));}
+    @Test public void nextSkipsConfirmedAndUsesStableTies(){Calendar c=Calendar.getInstance();c.set(2026,9,19,10,0,0);long now=c.getTimeInMillis();List<MedicationStore.Plan> plans=Arrays.asList(plan("b",11),plan("current",10),plan("past",9),plan("a",11));MedicationAgenda.Summary result=MedicationAgenda.summary(plans,Collections.emptySet(),now);assertEquals(2,result.due);assertEquals("a",result.next.id);assertEquals("b",MedicationAgenda.summary(plans,Collections.singleton("a"),now).next.id);assertNull(MedicationAgenda.summary(plans,new HashSet<>(Arrays.asList("a","b","current","past")),now).next);assertEquals(0,MedicationAgenda.summary(Collections.emptyList(),Collections.emptySet(),now).due);}
+    @Test public void dayBoundaryHasNoCarryOver(){Calendar c=Calendar.getInstance();c.set(2026,9,19,23,59,0);MedicationStore.Plan p=plan("last",23);p.minute=59;assertEquals(1,MedicationAgenda.summary(Collections.singletonList(p),Collections.emptySet(),c.getTimeInMillis()).due);c.add(Calendar.DAY_OF_MONTH,1);c.set(Calendar.HOUR_OF_DAY,0);c.set(Calendar.MINUTE,0);assertEquals("last",MedicationAgenda.summary(Collections.singletonList(p),Collections.emptySet(),c.getTimeInMillis()).next.id);}
+}

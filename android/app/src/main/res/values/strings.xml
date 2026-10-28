@@ -1,0 +1,16 @@
+<resources>
+    <string name="widget_name">온케어 · 오늘의 실천</string>
+    <string name="widget_description">오늘 기록과 루틴 완료를 확인하고 운동·수면·마음·iPhone 연결을 바로 엽니다.</string>
+    <string name="widget_title">ONCARE</string>
+    <string name="widget_date">오늘의 실천</string>
+    <string name="widget_records">오늘 기록 확인</string>
+    <string name="widget_routines">루틴 확인</string>
+    <string name="quick_exercise">운동 타이머</string>
+    <string name="quick_sleep">수면 기록</string>
+    <string name="quick_mood">마음 기록</string>
+    <string name="quick_connect">iPhone 연결</string>
+    <string name="widget_exercise">운동</string>
+    <string name="widget_sleep">수면</string>
+    <string name="widget_mood">마음</string>
+    <string name="widget_connect">연결</string>
+</resources>

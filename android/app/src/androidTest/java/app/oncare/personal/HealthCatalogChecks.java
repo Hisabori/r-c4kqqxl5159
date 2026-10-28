@@ -1,0 +1,23 @@
+package app.oncare.personal;
+import android.health.connect.datatypes.*;
+import android.health.connect.datatypes.units.*;
+import java.time.Instant;
+import java.util.*;
+import org.json.*;
+final class HealthCatalogChecks {
+    static void require(boolean result,String message){if(!result)throw new AssertionError(message);}
+    static HealthCatalog.Type type(String name){for(HealthCatalog.Type t:HealthCatalog.TYPES)if(t.record.equals(name))return t;throw new AssertionError(name);}
+    static void run()throws Exception {
+        SleepExportChecks.run();
+        JSONObject stage=(JSONObject)HealthCatalog.value(new SleepSessionRecord.Stage(Instant.now().minusSeconds(60),Instant.now(),SleepSessionRecord.StageType.STAGE_TYPE_SLEEPING_REM),0,new int[]{0});require(stage.getString("stageName").equals("REM 수면"),"Sleep stage name missing");
+        require(HealthCatalog.TYPES.length==42,"Fitness catalog incomplete");Set<String> types=new HashSet<>();for(HealthCatalog.Type t:HealthCatalog.TYPES){require(types.add(t.record),"Duplicate record type");require(t.permission.startsWith("android.permission.health.READ_"),"Non read-only permission");}
+        Instant end=Instant.now().minusSeconds(60),start=end.minusSeconds(300);Metadata metadata=new Metadata.Builder().setId(UUID.randomUUID().toString()).setDevice(new Device.Builder().setManufacturer("Synthetic").setModel("Fixture Watch").build()).build();
+        BloodPressureRecord pressure=new BloodPressureRecord.Builder(metadata,end,0,Pressure.fromMillimetersOfMercury(120),Pressure.fromMillimetersOfMercury(80),0).build();JSONObject p=HealthCatalog.encode(pressure,type("BloodPressureRecord"));JSONObject f=p.getJSONObject("fields");require(HealthCatalog.summary(p).equals("120 / 80 mmHg"),"Pressure summary lost reading/unit");require(f.getJSONObject("systolic").getDouble("inMillimetersOfMercury")==120,"Systolic or unit lost");require(f.getJSONObject("diastolic").getDouble("inMillimetersOfMercury")==80,"Diastolic lost");require(f.getJSONObject("metadata").getJSONObject("device").getString("model").equals("Fixture Watch"),"Device lost");require(p.getLong("date")==end.toEpochMilli(),"Instant timestamp changed");
+        HeartRateRecord heart=new HeartRateRecord.Builder(metadata,start,end,Arrays.asList(new HeartRateRecord.HeartRateSample(60,start),new HeartRateRecord.HeartRateSample(90,end))).build();JSONObject h=HealthCatalog.encode(heart,type("HeartRateRecord"));JSONArray samples=h.getJSONObject("fields").getJSONArray("samples");require(samples.length()==2&&samples.getJSONObject(1).getLong("beatsPerMinute")==90&&samples.getJSONObject(0).getLong("time")==start.toEpochMilli(),"Heart rate samples lost");
+        NutritionRecord meal=new NutritionRecord.Builder(metadata,start,end).setEnergy(Energy.fromCalories(500000)).setProtein(Mass.fromGrams(20)).setCaffeine(Mass.fromGrams(0.08)).build();JSONObject n=HealthCatalog.encode(meal,type("NutritionRecord"));require(n.getJSONObject("fields").getJSONObject("protein").getDouble("inGrams")==20,"Nutrition fields lost");require(n.getJSONObject("fields").isNull("calcium"),"Absent nutrient fabricated");
+        require(!p.getString("id").equals(h.getString("id")),"Types share IDs");require(p.getString("id").equals(HealthCatalog.encode(pressure,type("BloodPressureRecord")).getString("id")),"Unstable IDs");
+        try{HealthCatalog.value(Double.NaN,0,new int[]{0});throw new AssertionError("Accepted NaN");}catch(IllegalArgumentException expected){}
+        MedicalReader.validate(new JSONObject("{\"resourceType\":\"Observation\",\"valueQuantity\":{\"value\":120,\"unit\":\"mmHg\"}}"),0,new int[]{0});require(MedicalReader.TYPES.length==12,"Medical categories incomplete");
+        if(MedicalReader.supported()){FhirResource fhir=new FhirResource.Builder(FhirResource.FHIR_RESOURCE_TYPE_OBSERVATION,"synthetic-observation","{\"resourceType\":\"Observation\",\"id\":\"synthetic-observation\",\"valueQuantity\":{\"value\":120,\"unit\":\"mmHg\"}}").build();MedicalResource medical=new MedicalResource.Builder(MedicalResource.MEDICAL_RESOURCE_TYPE_VITAL_SIGNS,UUID.randomUUID().toString(),FhirVersion.parseFhirVersion("4.0.1"),fhir).build();MedicalReader.Type t=Arrays.stream(MedicalReader.TYPES).filter(v->v.code==MedicalResource.MEDICAL_RESOURCE_TYPE_VITAL_SIGNS).findFirst().get();JSONObject exported=MedicalReader.encode(medical,t,end.toEpochMilli());require(exported.getJSONObject("fields").getJSONObject("fhir").getJSONObject("valueQuantity").getDouble("value")==120,"FHIR unit/value lost");require(exported.getJSONObject("fields").getLong("capturedAt")==end.toEpochMilli(),"Medical captured timestamp lost");}
+    }
+}

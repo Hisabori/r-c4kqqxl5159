@@ -1,0 +1,7 @@
+package app.oncare.personal;
+import org.json.*;
+import java.util.*;
+final class HealthBrowser {
+ static String source(JSONObject record){JSONObject fields=record.optJSONObject("fields"),meta=fields==null?null:fields.optJSONObject("metadata"),device=meta==null?null:meta.optJSONObject("device"),origin=meta==null?null:meta.optJSONObject("dataOrigin");return record.optString("source")+" "+(origin==null?"":origin.optString("packageName"))+" "+(device==null?"":device.optString("manufacturer")+" "+device.optString("model"));}
+ static JSONArray filter(JSONArray records,int days,String query,long now)throws JSONException{Calendar date=Calendar.getInstance();date.setTimeInMillis(now);date.set(Calendar.HOUR_OF_DAY,0);date.set(Calendar.MINUTE,0);date.set(Calendar.SECOND,0);date.set(Calendar.MILLISECOND,0);date.add(Calendar.DAY_OF_YEAR,1-days);long start=days==0?0:date.getTimeInMillis();String needle=query.trim().toLowerCase(Locale.KOREA);List<JSONObject> list=new ArrayList<>();for(int i=0;records!=null&&i<records.length();i++){JSONObject r=records.optJSONObject(i);if(r!=null&&r.optLong("date")>=start&&r.optLong("date")<=now&&(r.optString("title")+" "+r.optString("category")+" "+source(r)).toLowerCase(Locale.KOREA).contains(needle))list.add(r);}list.sort((a,b)->{int order=Long.compare(b.optLong("date"),a.optLong("date"));return order!=0?order:b.optString("id").compareTo(a.optString("id"));});JSONArray out=new JSONArray();for(JSONObject r:list)out.put(r);return out;}
+}
