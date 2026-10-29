@@ -12,4 +12,12 @@ final class MedicationBagTextTests: XCTestCase {
   XCTAssertTrue(MedicationBagText.candidates(text, instructions: true).isEmpty)
   XCTAssertTrue(MedicationBagText.candidates("홍길동\n병원", instructions: false).isEmpty)
  }
+ func testAppendPreservesLinesAndAvoidsExactDuplicate() {
+  XCTAssertEqual(MedicationBagText.append("식후", to: "아침"), "아침\n식후")
+  XCTAssertEqual(MedicationBagText.append(" 식후 ", to: "아침\n식후"), "아침\n식후")
+ }
+ func testAppendRejectsOverflowWithoutTruncation() {
+  XCTAssertNil(MedicationBagText.append("추가", to: String(repeating: "가", count: 200)))
+  XCTAssertEqual(MedicationBagText.append("", to: "기존"), "기존")
+ }
 }

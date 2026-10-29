@@ -20,6 +20,7 @@ final class MedicationBagText {
             if((instructions?method:drug&&!method)&&seen.add(value))out.add(line);
         }return out;
     }
+    static String append(String line,String current){String value=line.trim();if(value.isEmpty()||lines(current).contains(value))return current;String result=current.isEmpty()?value:current+"\n"+value;return result.codePointCount(0,result.length())<=200?result:null;}
     static final class Photo {final Bitmap bitmap;final int rotation;Photo(Bitmap b,int r){bitmap=b;rotation=r;}}
     static Photo photo(Context context,Uri uri)throws IOException {
         BitmapFactory.Options opts=new BitmapFactory.Options();opts.inJustDecodeBounds=true;

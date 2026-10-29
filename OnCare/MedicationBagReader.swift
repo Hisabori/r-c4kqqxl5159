@@ -19,6 +19,13 @@ enum MedicationBagText {
             return (instructions ? isMethod : isDrug && !isMethod) && seen.insert(value).inserted
         }
     }
+    static func append(_ line: String, to current: String) -> String? {
+        let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return current }
+        if lines(current).contains(value) { return current }
+        let result = current.isEmpty ? value : current + "\n" + value
+        return result.count <= 200 ? result : nil
+    }
     static func recognize(_ data: Data) throws -> String {
         guard data.count <= 20 * 1024 * 1024, let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 2048, kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) else { throw CareError.invalid }
@@ -41,6 +48,10 @@ struct MedicationBagReader: View {
     @State private var name = ""
     @State private var instructions = ""
     private var filtered: [String] { lines.filter { query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.localizedCaseInsensitiveContains(query.trimmingCharacters(in: .whitespacesAndNewlines)) } }
+    private func appendInstruction(_ line: String) {
+        if let updated = MedicationBagText.append(line, to: instructions) { instructions = updated; message = "" }
+        else { message = "복용 안내가 200자를 넘어요. 기존 내용은 유지했어요. 필요한 내용을 직접 정리해주세요." }
+    }
     var body: some View {
         NavigationStack { List {
             Section { Text("약봉지를 밝은 곳에서 똑바로 촬영한 사진을 골라주세요. 환자 이름 등 개인정보가 있는 줄은 입력하지 마세요. 사진과 인식 원문은 투약 기록에 보관하지 않습니다.").font(.subheadline).foregroundStyle(.secondary)
@@ -50,11 +61,11 @@ struct MedicationBagReader: View {
             Section("입력 전 확인") { TextField("약 이름 · 선택한 줄을 수정하세요", text: $name).accessibilityIdentifier("ocr-name-preview"); Text("\(name.count) / 80자").font(.caption).foregroundStyle(name.count > 80 ? Palette.coral : .secondary); TextField("복용 방법 · 선택한 줄을 수정하세요", text: $instructions, axis: .vertical).accessibilityIdentifier("ocr-instructions-preview"); Text("\(instructions.count) / 200자").font(.caption).foregroundStyle(instructions.count > 200 ? Palette.coral : .secondary); if name.count > 80 || instructions.count > 200 { Text("긴 문장은 자동으로 잘라 넣지 않아요. 필요한 내용을 직접 줄여주세요.").font(.caption).foregroundStyle(Palette.coral) }; Button("확인한 내용으로 입력 화면에 적용") { if !name.isEmpty { apply(name, true) }; if !instructions.isEmpty { apply(instructions, false) }; dismiss() }.disabled((name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) || name.count > 80 || instructions.count > 200).accessibilityIdentifier("medication-ocr-apply") }
             if !lines.isEmpty {
                 Section("약 이름 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: false), id: \.self) { line in Button(line) { name = line } } }
-                Section("복용 안내 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: true), id: \.self) { line in Button(line) { instructions = line } } }
+                Section("복용 안내 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: true), id: \.self) { line in Button("추가 · " + line) { appendInstruction(line) } } }
             }
             Section("인식한 줄 · 직접 선택") { TextField("인식한 글자 검색", text: $query).accessibilityIdentifier("ocr-line-search"); Text("\(filtered.count) / \(lines.count)개 줄").font(.caption).foregroundStyle(.secondary); ForEach(Array(filtered.enumerated()), id: \.offset) { _, line in
                 VStack(alignment: .leading, spacing: 10) { Text(line).textSelection(.enabled)
-                    HStack { Button("약 이름에 사용") { name = line }; Spacer(); Button("복용 방법에 사용") { instructions = line } }.font(.caption)
+                    HStack { Button("약 이름에 사용") { name = line }; Spacer(); Button("복용 방법에 추가") { appendInstruction(line) } }.font(.caption)
                 }.padding(.vertical, 4)
             } }
             Section { Text("인식 오류가 있을 수 있어요. 용량·시간·요일은 자동으로 정하지 않으며 알림은 꺼진 상태로 돌아갑니다. 원본을 확인한 뒤 일정을 직접 저장하세요.").font(.caption).foregroundStyle(.secondary) }

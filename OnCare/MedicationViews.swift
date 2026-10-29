@@ -95,6 +95,7 @@ struct MedicationEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State var plan: MedicationPlan
     @State private var showBagReader = false
+    @State private var duplicateWarning = false
     @State private var busy = false
     private var time: Binding<Date> {
         Binding(get: { Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: plan.hour, minute: plan.minute)) ?? Date() }, set: { plan.hour = Calendar.current.component(.hour, from: $0); plan.minute = Calendar.current.component(.minute, from: $0) })
@@ -125,9 +126,12 @@ struct MedicationEditor: View {
                 }.interactiveDismissDisabled(busy)
                 .sheet(isPresented: $showBagReader) { MedicationBagReader { value, name in if name { plan.name = String(value.prefix(80)) } else { plan.instructions = String(value.prefix(200)) }; plan.enabled = false } }
                 .onAppear { store.message = nil }
+                .alert("같은 약·시간의 일정이 있어요", isPresented: $duplicateWarning) { Button("돌아가서 확인", role: .cancel) {} ; Button("별도 일정으로 저장") { savePlan(confirmed: true) } } message: { Text("이름·시간이 같고 반복 요일이 겹치는 일정이 있어요. 처방과 기존 일정을 확인해주세요. 이름만 비교한 안내이며 성분·상호작용 판단은 아니에요.") }
         }
     }
-    private func savePlan() {
+    private func savePlan(confirmed: Bool = false) {
+        guard !busy else { return }
+        if !confirmed && !MedicationAgenda.overlapping(plan, in: store.state.plans).isEmpty { duplicateWarning = true; return }
         busy = true
         Task { if await store.save(plan) { dismiss() }; busy = false }
     }

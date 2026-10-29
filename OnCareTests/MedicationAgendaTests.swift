@@ -27,4 +27,18 @@ final class MedicationAgendaTests: XCTestCase {
         let tuesday = calendar.date(byAdding: .day, value: 1, to: monday)!
         XCTAssertNil(MedicationAgenda.summary(MedicationInsights.today(state, now: tuesday, calendar: calendar), checked: [], now: tuesday, calendar: calendar).next)
     }
+    func testOverlapRequiresSameNameTimeAndSharedDay() {
+        var a = MedicationPlan(name: "타이 레놀정", hour: 9, weekdays: [2,4])
+        var b = MedicationPlan(name: "타이레놀정", hour: 9, weekdays: [4,6])
+        a.id = "a"; b.id = "b"
+        XCTAssertEqual(MedicationAgenda.overlapping(a, in: [b]).count, 1)
+        b.hour = 10; XCTAssertTrue(MedicationAgenda.overlapping(a, in: [b]).isEmpty)
+        b.hour = 9; b.weekdays = [3]; XCTAssertTrue(MedicationAgenda.overlapping(a, in: [b]).isEmpty)
+    }
+    func testOverlapExcludesOwnIDAndDifferentStrength() {
+        var a = MedicationPlan(name: "A정 10mg", hour: 9)
+        var b = MedicationPlan(name: "A정 20mg", hour: 9)
+        a.id = "a"; b.id = "b"
+        XCTAssertTrue(MedicationAgenda.overlapping(a, in: [a,b]).isEmpty)
+    }
 }

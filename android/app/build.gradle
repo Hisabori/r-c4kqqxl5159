@@ -6,8 +6,8 @@ android {
         applicationId 'app.oncare.personal.v3'
         minSdk 26
         targetSdk 34
-        versionCode 50
-        versionName '3.40.0'
+        versionCode 51
+        versionName '3.41.0'
         testInstrumentationRunner 'app.oncare.personal.BackupChecks'
     }
     signingConfigs {
