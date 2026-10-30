@@ -50,6 +50,7 @@ struct MedicationBagReader: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var textFocused: Bool
     @State private var rawText = ""
+    @State private var textReviewed = false
     @State private var photo: PhotosPickerItem?
     @State private var lines: [String] = []
     @State private var busy = false
@@ -65,13 +66,18 @@ struct MedicationBagReader: View {
     private var textImportSection: some View {
                 Section("문자 복약 안내 가져오기") {
                     Text("문자 앱에서 필요한 내용을 복사한 뒤 붙여넣어주세요. 문자함 전체를 읽지 않으며, 원문은 투약 기록에 저장하지 않아요.").font(.subheadline).foregroundStyle(.secondary)
+                    if !textReviewed {
                     PasteButton(payloadType: String.self) { values in Task { @MainActor in if values.count == 1, let value = values.first, MedicationBagText.importedText(value) != nil { rawText = value; message = "" } else { message = "한 개의 문자 내용을 선택해주세요. 최대 12,000자·100줄·한 줄 500자까지 가져올 수 있어요." } } }.accessibilityIdentifier("medication-text-paste")
                     TextEditor(text: $rawText).focused($textFocused).frame(minHeight: 140).accessibilityIdentifier("medication-text-input")
                     Button("내용에서 사용할 줄 고르기") {
                         guard let text = MedicationBagText.importedText(rawText) else { message = "내용이 비어 있거나 입력 한도를 넘었어요. 필요한 안내만 남겨주세요."; return }
-                        lines = MedicationBagText.lines(text); name = ""; instructions = ""; message = ""
+                        lines = MedicationBagText.lines(text); name = ""; instructions = ""; message = ""; textFocused = false; textReviewed = true
                     }.accessibilityIdentifier("medication-text-review")
                     Text("이름·연락처·인증번호 등 불필요한 내용은 지워주세요. 약 이름과 복용 안내를 직접 확인한 뒤 필요한 줄만 적용해요.").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("\(lines.count)개 줄을 가져왔어요. 아래에서 필요한 내용만 선택해주세요.").accessibilityIdentifier("medication-text-lines-count")
+                        Button("원문 다시 편집") { textReviewed = false }.accessibilityIdentifier("medication-text-edit")
+                    }
                     if !message.isEmpty { Text(message).foregroundStyle(Palette.coral) }
                 }
     }
@@ -95,7 +101,7 @@ struct MedicationBagReader: View {
             } }
             Section { Text("인식 오류가 있을 수 있어요. 용량·시간·요일은 자동으로 정하지 않으며 알림은 꺼진 상태로 돌아갑니다. 원본을 확인한 뒤 일정을 직접 저장하세요.").font(.caption).foregroundStyle(.secondary) }
         }.navigationTitle(textOnly ? "문자 복약 안내" : "약봉지 글자 인식").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } }; ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("입력 완료") { textFocused = false }.accessibilityIdentifier("medication-text-done") } }
-        .onChange(of: rawText) { _ in lines = []; name = ""; instructions = "" }
+        .onChange(of: rawText) { _ in lines = []; name = ""; instructions = ""; textReviewed = false }
         .task(id: photo) {
             guard let selected = photo else { return }; busy = true; lines = []; name = ""; instructions = ""; message = ""; query = ""
             do { guard let data = try await selected.loadTransferable(type: Data.self) else { throw CareError.invalid }
