@@ -7,17 +7,24 @@ enum MedicationBagText {
     static func lines(_ text: String) -> [String] {
         Array(text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.prefix(100)).map { String($0.prefix(500)) }
     }
-    static func candidates(_ text: String, instructions: Bool) -> [String] {
-        var seen = Set<String>()
-        return lines(text).filter { line in
+    struct Candidates { var names: [String] = []; var instructions: [String] = [] }
+    private static let phone = try! NSRegularExpression(pattern: #"\d{2,4}[- ]\d{3,4}[- ]\d{4}"#)
+    private static let drug = try! NSRegularExpression(pattern: #"[가-힣a-z][가-힣a-z0-9 .·()-]*(정|캡슐|시럽|산|액|mg|mcg|밀리그램)(\s|\d|$)"#)
+    private static let privateTerms = ["환자", "성명", "생년", "주민", "전화", "주소", "면허", "사업자", "처방전번호"]
+    private static let methodTerms = ["식전", "식후", "식사", "취침", "복용", "하루", "매일", "아침", "점심", "저녁", "1일", "회분"]
+    static func analyze(_ rows: [String]) -> Candidates {
+        var result = Candidates(); var seen = Set<String>()
+        for line in rows {
             let value = line.precomposedStringWithCompatibilityMapping.lowercased()
-            let privateTerms = ["환자", "성명", "생년", "주민", "전화", "주소", "면허", "사업자", "처방전번호"]
-            guard !privateTerms.contains(where: value.contains), !value.contains("@"), value.range(of: #"\d{2,4}[- ]\d{3,4}[- ]\d{4}"#, options: .regularExpression) == nil else { return false }
-            let method = ["식전", "식후", "식사", "취침", "복용", "하루", "매일", "아침", "점심", "저녁", "1일", "회분"]
-            let isMethod = method.contains(where: value.contains)
-            let isDrug = value.range(of: #"[가-힣a-z][가-힣a-z0-9 .·()-]*(정|캡슐|시럽|산|액|mg|mcg|밀리그램)(\s|\d|$)"#, options: .regularExpression) != nil
-            return (instructions ? isMethod : isDrug && !isMethod) && seen.insert(value).inserted
+            let range = NSRange(value.startIndex..<value.endIndex, in: value)
+            guard !seen.contains(value), !privateTerms.contains(where: value.contains), !value.contains("@"), phone.firstMatch(in: value, range: range) == nil else { continue }
+            if methodTerms.contains(where: value.contains) { result.instructions.append(line); seen.insert(value) }
+            else if drug.firstMatch(in: value, range: range) != nil { result.names.append(line); seen.insert(value) }
         }
+        return result
+    }
+    static func candidates(_ text: String, instructions: Bool) -> [String] {
+        let result = analyze(lines(text)); return instructions ? result.instructions : result.names
     }
     static func append(_ line: String, to current: String) -> String? {
         let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,12 +60,16 @@ struct MedicationBagReader: View {
     @State private var textReviewed = false
     @State private var photo: PhotosPickerItem?
     @State private var lines: [String] = []
+    @State private var candidateGroups = MedicationBagText.Candidates()
     @State private var busy = false
     @State private var message = ""
     @State private var query = ""
     @State private var name = ""
     @State private var instructions = ""
-    private var filtered: [String] { lines.filter { query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || $0.localizedCaseInsensitiveContains(query.trimmingCharacters(in: .whitespacesAndNewlines)) } }
+    private var filtered: [String] {
+        let value = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? lines : lines.filter { $0.localizedCaseInsensitiveContains(value) }
+    }
     private func appendInstruction(_ line: String) {
         if let updated = MedicationBagText.append(line, to: instructions) { instructions = updated; message = "" }
         else { message = "복용 안내가 200자를 넘어요. 기존 내용은 유지했어요. 필요한 내용을 직접 정리해주세요." }
@@ -91,8 +102,8 @@ struct MedicationBagReader: View {
             if textOnly { textImportSection }
             Section("입력 전 확인") { TextField("약 이름 · 선택한 줄을 수정하세요", text: $name).accessibilityIdentifier("ocr-name-preview"); Text("\(name.count) / 80자").font(.caption).foregroundStyle(name.count > 80 ? Palette.coral : .secondary); TextField("복용 방법 · 선택한 줄을 수정하세요", text: $instructions, axis: .vertical).accessibilityIdentifier("ocr-instructions-preview"); Text("\(instructions.count) / 200자").font(.caption).foregroundStyle(instructions.count > 200 ? Palette.coral : .secondary); if name.count > 80 || instructions.count > 200 { Text("긴 문장은 자동으로 잘라 넣지 않아요. 필요한 내용을 직접 줄여주세요.").font(.caption).foregroundStyle(Palette.coral) }; Button("확인한 내용으로 입력 화면에 적용") { if !name.isEmpty { apply(name, true) }; if !instructions.isEmpty { apply(instructions, false) }; dismiss() }.disabled((name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) || name.count > 80 || instructions.count > 200 || (textOnly && lines.isEmpty)).accessibilityIdentifier("medication-ocr-apply") }
             if !lines.isEmpty {
-                Section("약 이름 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: false), id: \.self) { line in Button(line) { name = line } } }
-                Section("복용 안내 후보 · 원본 확인 필요") { ForEach(MedicationBagText.candidates(lines.joined(separator: "\n"), instructions: true), id: \.self) { line in Button("추가 · " + line) { appendInstruction(line) } } }
+                Section("약 이름 후보 · 원본 확인 필요") { ForEach(candidateGroups.names, id: \.self) { line in Button(line) { name = line } } }
+                Section("복용 안내 후보 · 원본 확인 필요") { ForEach(candidateGroups.instructions, id: \.self) { line in Button("추가 · " + line) { appendInstruction(line) } } }
             }
             Section("인식한 줄 · 직접 선택") { TextField("인식한 글자 검색", text: $query).accessibilityIdentifier("ocr-line-search"); Text("\(filtered.count) / \(lines.count)개 줄").font(.caption).foregroundStyle(.secondary); ForEach(Array(filtered.enumerated()), id: \.offset) { _, line in
                 VStack(alignment: .leading, spacing: 10) { Text(line).textSelection(.enabled)
@@ -101,6 +112,7 @@ struct MedicationBagReader: View {
             } }
             Section { Text("인식 오류가 있을 수 있어요. 용량·시간·요일은 자동으로 정하지 않으며 알림은 꺼진 상태로 돌아갑니다. 원본을 확인한 뒤 일정을 직접 저장하세요.").font(.caption).foregroundStyle(.secondary) }
         }.navigationTitle(textOnly ? "문자 복약 안내" : "약봉지 글자 인식").navigationBarTitleDisplayMode(.inline).modifier(CareThemeSurface()).toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("닫기") { dismiss() } }; ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("입력 완료") { textFocused = false }.accessibilityIdentifier("medication-text-done") } }
+        .onChange(of: lines) { candidateGroups = MedicationBagText.analyze($0) }
         .onChange(of: rawText) { _ in lines = []; name = ""; instructions = ""; textReviewed = false }
         .task(id: photo) {
             guard let selected = photo else { return }; busy = true; lines = []; name = ""; instructions = ""; message = ""; query = ""

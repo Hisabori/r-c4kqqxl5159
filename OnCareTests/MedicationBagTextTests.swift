@@ -32,4 +32,12 @@ final class MedicationBagTextTests: XCTestCase {
   XCTAssertNil(MedicationBagText.importedText(String(repeating: "A", count: 12001)))
   XCTAssertNotNil(MedicationBagText.importedText(String(repeating: "A", count: 500)))
  }
+ func testGroupedCandidatesPreserveOrderAndFirstSpelling() {
+  let result = MedicationBagText.analyze(MedicationBagText.lines("A정 10mg\n식후 복용\na정 10mg\n식후 복용\n성명 A정\nB캡슐"))
+  XCTAssertEqual(result.names, ["A정 10mg", "B캡슐"]); XCTAssertEqual(result.instructions, ["식후 복용"])
+ }
+ func testFreshGroupsDoNotRetainPreviousText() {
+  let before = MedicationBagText.analyze(["A정"]), after = MedicationBagText.analyze([])
+  XCTAssertEqual(before.names, ["A정"]); XCTAssertTrue(after.names.isEmpty); XCTAssertTrue(after.instructions.isEmpty)
+ }
 }

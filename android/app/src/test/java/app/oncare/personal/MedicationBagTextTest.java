@@ -9,4 +9,6 @@ public class MedicationBagTextTest {
  @Test public void selectedTextKeepsLines(){assertEquals("A정 10mg\n식후 복용",MedicationBagText.importedText("  A정 10mg\n식후 복용  "));}
  @Test public void selectedTextRejectsEmptyNullAndOversizedRows(){assertNull(MedicationBagText.importedText(null));assertNull(MedicationBagText.importedText(" \n"));assertNull(MedicationBagText.importedText("A\0B"));assertNull(MedicationBagText.importedText("가".repeat(501)));}
  @Test public void selectedTextRejectsTooManyLinesAndHugePayload(){assertNull(MedicationBagText.importedText(String.join("\n",Collections.nCopies(101,"A"))));assertNull(MedicationBagText.importedText("A".repeat(12001)));assertNotNull(MedicationBagText.importedText("A".repeat(500)));}
+ @Test public void groupedCandidatesPreserveOrderAndFirstSpelling(){MedicationBagText.Candidates g=MedicationBagText.analyze("A정 10mg\n식후 복용\na정 10mg\n식후 복용\n성명 A정\nB캡슐");assertEquals(Arrays.asList("A정 10mg","B캡슐"),g.names);assertEquals(Collections.singletonList("식후 복용"),g.instructions);}
+ @Test public void freshGroupsDoNotRetainPreviousText(){MedicationBagText.Candidates old=MedicationBagText.analyze("A정");MedicationBagText.Candidates fresh=MedicationBagText.analyze("");assertEquals(Collections.singletonList("A정"),old.names);assertTrue(fresh.names.isEmpty());assertTrue(fresh.instructions.isEmpty());}
 }
