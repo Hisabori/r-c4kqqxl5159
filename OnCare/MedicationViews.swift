@@ -95,6 +95,7 @@ struct MedicationEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State var plan: MedicationPlan
     @State private var showBagReader = false
+    @State private var showTextReader = false
     @State private var duplicateWarning = false
     @State private var busy = false
     private var time: Binding<Date> {
@@ -103,7 +104,7 @@ struct MedicationEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section { Button("약봉지 사진에서 글자 읽기") { showBagReader = true }.accessibilityIdentifier("medication-ocr-open"); Text("인식한 줄을 선택해 입력하세요. 약 이름·용량·시간은 원본과 직접 확인하며 자동으로 저장하지 않습니다.").font(.caption).foregroundStyle(.secondary) }
+                Section { Button("문자 복약 안내 가져오기") { showTextReader = true }.accessibilityIdentifier("medication-text-open"); Button("약봉지 사진에서 글자 읽기") { showBagReader = true }.accessibilityIdentifier("medication-ocr-open"); Text("인식한 줄을 선택해 입력하세요. 약 이름·용량·시간은 원본과 직접 확인하며 자동으로 저장하지 않습니다.").font(.caption).foregroundStyle(.secondary) }
                 Section("처방받은 복용 일정") {
                     TextField("약 이름", text: $plan.name).accessibilityIdentifier("medication-name")
                     TextField("복용 방법 · 처방대로 입력 (선택)", text: $plan.instructions, axis: .vertical).accessibilityIdentifier("medication-instructions")
@@ -125,6 +126,7 @@ struct MedicationEditor: View {
                     ToolbarItem(placement: .navigationBarTrailing) { Button(busy ? "저장 중…" : "저장") { savePlan() }.disabled(busy).accessibilityIdentifier("medication-save") }
                 }.interactiveDismissDisabled(busy)
                 .sheet(isPresented: $showBagReader) { MedicationBagReader { value, name in if name { plan.name = String(value.prefix(80)) } else { plan.instructions = String(value.prefix(200)) }; plan.enabled = false } }
+                .sheet(isPresented: $showTextReader) { MedicationBagReader(textOnly: true) { value, name in if name { plan.name = value } else { plan.instructions = value }; plan.enabled = false } }
                 .onAppear { store.message = nil }
                 .alert("같은 약·시간의 일정이 있어요", isPresented: $duplicateWarning) { Button("돌아가서 확인", role: .cancel) {} ; Button("별도 일정으로 저장") { savePlan(confirmed: true) } } message: { Text("이름·시간이 같고 반복 요일이 겹치는 일정이 있어요. 처방과 기존 일정을 확인해주세요. 이름만 비교한 안내이며 성분·상호작용 판단은 아니에요.") }
         }

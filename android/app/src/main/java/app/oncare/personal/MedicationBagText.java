@@ -21,6 +21,7 @@ final class MedicationBagText {
         }return out;
     }
     static String append(String line,String current){String value=line.trim();if(value.isEmpty()||lines(current).contains(value))return current;String result=current.isEmpty()?value:current+"\n"+value;return result.codePointCount(0,result.length())<=200?result:null;}
+    static String importedText(String text){if(text==null||text.length()>12000||text.indexOf(0)>=0)return null;String value=text.trim();if(value.isEmpty())return null;int count=0;for(String line:value.split("\\R",-1)){if(!line.trim().isEmpty()){if(++count>100||line.length()>500)return null;}}return value;}
     static final class Photo {final Bitmap bitmap;final int rotation;Photo(Bitmap b,int r){bitmap=b;rotation=r;}}
     static Photo photo(Context context,Uri uri)throws IOException {
         BitmapFactory.Options opts=new BitmapFactory.Options();opts.inJustDecodeBounds=true;

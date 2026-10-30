@@ -79,6 +79,9 @@
         <activity android:name=".ArticleActivity" android:exported="false" />
         <activity android:name=".StepsActivity" android:exported="false" />
         <activity android:name=".HealthDataActivity" android:exported="false" />
+        <activity android:name=".MedicationTextShareActivity" android:exported="true" android:excludeFromRecents="true" android:label="복약 안내 가져오기">
+            <intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/><data android:mimeType="text/plain"/></intent-filter>
+        </activity>
         <activity android:name=".MedicationActivity" android:exported="false" />
         <activity android:name=".PracticeActivity" android:exported="false" />
         <activity android:name=".HealthSyncActivity" android:exported="true">

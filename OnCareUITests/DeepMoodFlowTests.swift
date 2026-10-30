@@ -124,6 +124,18 @@ final class DeepMoodFlowTests: XCTestCase {
         try capture("steps-progress")
         app.buttons["닫기"].firstMatch.tap(); app.terminate()
     }
+    func testMedicationTextImportRequiresReviewWithoutSaving() throws {
+        let app = XCUIApplication(); app.launchArguments += ["-app-start-tab", "2"]; app.launch()
+        XCUIDevice.shared.system.open(URL(string: "oncare://open/medication")!)
+        let add = app.buttons["medication-add"]; XCTAssertTrue(add.waitForExistence(timeout: 15)); reach(add, in: app); add.tap()
+        app.buttons["medication-text-open"].tap()
+        let input = app.textViews["medication-text-input"]; XCTAssertTrue(input.waitForExistence(timeout: 10)); input.tap(); input.typeText("A정 10mg\n식후 복용")
+        app.buttons["medication-text-done"].tap()
+        let review = app.buttons["medication-text-review"]; reach(review, in: app); review.tap()
+        XCTAssertTrue(app.staticTexts["A정 10mg"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["medication-ocr-apply"].isEnabled)
+        try capture("medication-text-import")
+    }
     private func reach(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<12 { if element.isHittable { return }; app.swipeUp() }
         XCTAssertTrue(element.isHittable)

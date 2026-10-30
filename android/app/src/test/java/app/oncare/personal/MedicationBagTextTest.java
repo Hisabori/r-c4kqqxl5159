@@ -6,4 +6,7 @@ public class MedicationBagTextTest {
  @Test public void unknownLinesAreNotGuessed(){assertTrue(MedicationBagText.candidates("홍길동\n2026-10-28\n병원",false).isEmpty());assertTrue(MedicationBagText.candidates("타이레놀정",true).isEmpty());}
  @Test public void appendPreservesLinesAndAvoidsExactDuplicate(){assertEquals("아침\n식후",MedicationBagText.append("식후","아침"));assertEquals("아침\n식후",MedicationBagText.append(" 식후 ","아침\n식후"));}
  @Test public void appendRejectsOverflowWithoutTruncation(){assertNull(MedicationBagText.append("추가","가".repeat(200)));assertEquals("기존",MedicationBagText.append("","기존"));}
+ @Test public void selectedTextKeepsLines(){assertEquals("A정 10mg\n식후 복용",MedicationBagText.importedText("  A정 10mg\n식후 복용  "));}
+ @Test public void selectedTextRejectsEmptyNullAndOversizedRows(){assertNull(MedicationBagText.importedText(null));assertNull(MedicationBagText.importedText(" \n"));assertNull(MedicationBagText.importedText("A\0B"));assertNull(MedicationBagText.importedText("가".repeat(501)));}
+ @Test public void selectedTextRejectsTooManyLinesAndHugePayload(){assertNull(MedicationBagText.importedText(String.join("\n",Collections.nCopies(101,"A"))));assertNull(MedicationBagText.importedText("A".repeat(12001)));assertNotNull(MedicationBagText.importedText("A".repeat(500)));}
 }

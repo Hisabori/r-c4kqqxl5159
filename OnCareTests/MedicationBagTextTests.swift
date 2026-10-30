@@ -20,4 +20,16 @@ final class MedicationBagTextTests: XCTestCase {
   XCTAssertNil(MedicationBagText.append("추가", to: String(repeating: "가", count: 200)))
   XCTAssertEqual(MedicationBagText.append("", to: "기존"), "기존")
  }
+ func testSelectedTextKeepsLinesWithoutParsingSchedule() {
+  XCTAssertEqual(MedicationBagText.importedText("  A정 10mg\n식후 복용  "), "A정 10mg\n식후 복용")
+ }
+ func testSelectedTextRejectsEmptyNullAndOversizedRows() {
+  XCTAssertNil(MedicationBagText.importedText(" \n")); XCTAssertNil(MedicationBagText.importedText("A\0B"))
+  XCTAssertNil(MedicationBagText.importedText(String(repeating: "가", count: 501)))
+ }
+ func testSelectedTextRejectsTooManyLinesAndHugePayload() {
+  XCTAssertNil(MedicationBagText.importedText(Array(repeating: "A", count: 101).joined(separator: "\n")))
+  XCTAssertNil(MedicationBagText.importedText(String(repeating: "A", count: 12001)))
+  XCTAssertNotNil(MedicationBagText.importedText(String(repeating: "A", count: 500)))
+ }
 }
