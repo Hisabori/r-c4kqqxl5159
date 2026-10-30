@@ -102,7 +102,7 @@ final class DeepMoodFlowTests: XCTestCase {
         app.launchArguments += ["-app-deep-mind", "YES", "-app-start-tab", "1", "-app-deep-focus", "외로움"]
         app.launch()
         let open = app.buttons["deep-short-write"]
-        reach(open, in: app); open.tap()
+        XCTAssertTrue(open.waitForExistence(timeout: 15)); open.tap()
         let note = app.descendants(matching: .any)["record-note"].firstMatch
         XCTAssertTrue(note.waitForExistence(timeout: 10))
         XCTAssertTrue((note.value as? String ?? "").contains("[짧게 남긴 마음]"))

@@ -1,3 +1,4 @@
+# Let XCTest scroll the existing short-writing button into view
 # Collapse reviewed text input and isolate message-import UI test
 # Expected-version test follows 3.42 build 55
 name: Build research-capable unsigned IPA
